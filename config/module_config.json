@@ -1,0 +1,52 @@
+{
+  "modules": {
+    "dataset_loader": {
+      "enabled": true,
+      "required": false,
+      "module": "src.data.dataset_loader",
+      "class": "DatasetLoaderModule"
+    },
+    "curvature_field": {
+      "enabled": true,
+      "required": true,
+      "module": "src.physics.fields.curvature_field_gpu",
+      "class": "CurvatureFieldGPUModule"
+    },
+    "higgs_field": {
+      "enabled": true,
+      "required": true,
+      "module": "src.physics.fields.higgs_field_gpu",
+      "class": "HiggsFieldGPUModule"
+    },
+    "temperature_field": {
+      "enabled": true,
+      "required": false,
+      "module": "src.physics.fields.temperature_field_gpu",
+      "class": "TemperatureFieldGPUModule"
+    },
+    "probability_field": {
+      "enabled": true,
+      "required": false,
+      "module": "src.physics.fields.probability_field_gpu",
+      "class": "ProbabilityFieldGPUModule"
+    },
+    "particle_solver": {
+      "enabled": true,
+      "required": true,
+      "module": "src.physics.particles.particle_solver_gpu",
+      "class": "ParticleSolverGPUModule"
+    },
+    "osc_bridge": {
+      "enabled": true,
+      "required": false,
+      "module": "src.modulation.osc_bridge",
+      "class": "OSCBridgeModule"
+    },
+    "renderer_3d": {
+      "enabled": true,
+      "required": false,
+      "module": "src.rendering.renderer_3d",
+      "class": "Renderer3DModule"
+    }
+  }
+}

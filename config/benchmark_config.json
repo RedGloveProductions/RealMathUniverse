@@ -1,0 +1,10 @@
+{
+  "benchmark": {
+    "comparison_profiles": ["preview", "desktop", "stress_light"],
+    "default_warmup_frames": 45,
+    "default_measured_frames": 360,
+    "separate_warmup_from_measured": true,
+    "write_comparison_report": true,
+    "notes": "v0.2E benchmarks active 3D field sampling. This should be more meaningful than pure allocation stress."
+  }
+}

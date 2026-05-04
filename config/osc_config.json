@@ -1,0 +1,12 @@
+{
+  "osc": {
+    "enabled": false,
+    "mode": "local_loopback",
+    "vcv_host": "127.0.0.1",
+    "simulation_receive_host": "0.0.0.0",
+    "simulation_receive_port": 9000,
+    "vcv_receive_port": 7001,
+    "auto_detect_signal": true,
+    "fallback_to_internal": true
+  }
+}

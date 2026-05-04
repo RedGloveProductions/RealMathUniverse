@@ -1,0 +1,3 @@
+"""
+GUI/HUD overlay placeholder.
+"""

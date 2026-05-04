@@ -1,0 +1,63 @@
+{
+  "render": {
+    "enabled": true,
+    "backend": "metal_export",
+    "windowed": true,
+    "width": 1920,
+    "height": 1080,
+    "fullscreen": false,
+    "clean_capture_before_hud": true,
+    "hud_enabled": true,
+    "target_render_fps": 60,
+    "render_sample_count": 25000,
+    "render_world_radius": 6.0,
+    "point_radius": 2,
+    "metal_export": {
+      "output_dir": "output/metal_live",
+      "binary_filename": "particles_xyz_f32.bin",
+      "metadata_filename": "metadata.json",
+      "export_every_n_frames": 1
+    },
+    "camera": {
+      "pan_step": 0.18,
+      "zoom_step": 1.12,
+      "rotation_step_degrees": 4.0,
+      "default_rotation_degrees": 0.0,
+      "default_pan_x": 0.0,
+      "default_pan_y": 0.0
+    },
+    "color_modes": {
+      "default": "classic",
+      "available": [
+        "classic",
+        "depth",
+        "radial",
+        "behavior",
+        "thermal"
+      ]
+    },
+    "visual_quality": {
+      "trails_enabled": true,
+      "trail_length": 12,
+      "trail_alpha_floor": 0.08,
+      "trail_alpha_ceiling": 0.42,
+      "grid_enabled": false,
+      "center_marker_enabled": true,
+      "horizon_ring_enabled": true,
+      "compact_hud_enabled": false,
+      "sample_presets": [25000, 50000, 100000]
+    },
+    "hud_overlays": {
+      "enabled": true,
+      "stats_overlay_enabled": true,
+      "controls_overlay_enabled": true,
+      "material": "hudWindow",
+      "opacity": 0.78,
+      "stats_width": 430,
+      "controls_width": 580,
+      "panel_margin": 18,
+      "panel_top": 18
+    },
+    "notes": "v0.6A adds Metal-side particle trails, center marker, horizon ring, grid toggle, sample preset controls, and compact HUD mode."
+  }
+}

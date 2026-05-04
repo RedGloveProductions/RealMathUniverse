@@ -1,0 +1,30 @@
+{
+  "higgs": {
+    "enabled": true,
+    "initial_h": 1.0,
+    "default_lambda": 0.129,
+    "v_reference": 246.0,
+    "notes": "V(H)=lambda*(H^2-v^2)^2 planned. v0.2E includes sampled Higgs values as a reduced force modulation term."
+  },
+  "temperature": {
+    "enabled": true,
+    "baseline_temperature": 2.725
+  },
+  "sampling_stress": {
+    "enabled": true,
+    "world_radius": 6.0,
+    "animate_fields": false,
+    "curvature_pattern_strength": 0.65,
+    "curvature_pattern_radius_scale": 0.42,
+    "curvature_wave_mix": 0.10,
+    "curvature_sample_weight": 0.85,
+    "higgs_sample_weight": 0.10,
+    "temperature_sample_weight": 0.02,
+    "probability_sample_weight": 0.05,
+    "notes": "v0.2E samples active 3D fields at particle positions. Nearest-neighbor first; trilinear later."
+  },
+  "gauge_like_fields": {
+    "enabled": false,
+    "notes": "Reserved for EM-like, strong-like, and weak-like field categories."
+  }
+}

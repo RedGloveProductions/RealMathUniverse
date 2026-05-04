@@ -1,0 +1,25 @@
+{
+  "solvers": {
+    "curvature_reduced_gpu": {
+      "enabled": true,
+      "required": true,
+      "module": "src.physics.relativity.curvature_reduced_gpu",
+      "class": "CurvatureReducedGPUSolver",
+      "min_fidelity": "reduced"
+    },
+    "black_hole_reduced": {
+      "enabled": true,
+      "required": false,
+      "module": "src.physics.relativity.black_hole_reduced",
+      "class": "BlackHoleReducedSolver",
+      "min_fidelity": "reduced"
+    },
+    "geodesic_solver_high_fidelity": {
+      "enabled": false,
+      "required": false,
+      "module": "src.physics.relativity.geodesic_solver_high_fidelity",
+      "class": "GeodesicSolverHighFidelity",
+      "min_fidelity": "maximum"
+    }
+  }
+}

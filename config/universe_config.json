@@ -1,0 +1,16 @@
+{
+  "universe": {
+    "name": "RealMathUniverse",
+    "dimensionality": "3D+T",
+    "coordinate_model": {
+      "x": "longitude_or_east_west",
+      "y": "depth_altitude_or_scalar",
+      "z": "latitude_or_north_south",
+      "t": "frame_time_dataset_time_or_staged_activation"
+    }
+  },
+  "time": {
+    "fixed_dt": 0.0166666667,
+    "time_mode": "fixed_step"
+  }
+}

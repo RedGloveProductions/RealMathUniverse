@@ -1,0 +1,13 @@
+numpy>=1.26
+pygame>=2.6
+
+# Optional GPU paths:
+# cupy-cuda12x
+# torch
+#
+# Install only the GPU package that matches your machine.
+# For NVIDIA CUDA:
+#   pip install cupy-cuda12x
+#
+# For PyTorch CUDA or Apple MPS:
+#   pip install torch

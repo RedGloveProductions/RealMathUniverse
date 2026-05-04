@@ -1,0 +1,18 @@
+{
+  "gpu": {
+    "prefer_gpu": true,
+    "strict_gpu": false,
+    "backend_priority": [
+      "cupy",
+      "torch_cuda",
+      "torch_mps",
+      "numpy"
+    ],
+    "allow_cpu_fallback": true,
+    "default_dtype": "float32",
+    "preallocate_buffers": true,
+    "memory_safety_margin": 0.2,
+    "log_device_report": true,
+    "notes": "CPU fallback is allowed only for preview/desktop style profiles. Strict profiles should require GPU."
+  }
+}

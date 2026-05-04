@@ -1,0 +1,28 @@
+{
+  "datasets": {
+    "active_dataset": "synthetic_defaults",
+    "run_without_external_data": true,
+    "crab_nav_points": {
+      "enabled": false,
+      "path": "data/personal/crab_nav_points.csv",
+      "columns": {
+        "longitude": "lon",
+        "latitude": "lat",
+        "depth": "depth",
+        "timestamp": "timestamp"
+      }
+    },
+    "sonar": {
+      "enabled": false,
+      "path": "data/sonar/"
+    },
+    "fits": {
+      "enabled": false,
+      "path": "data/scientific/"
+    },
+    "desi": {
+      "enabled": false,
+      "path": "data/desi_chunks/"
+    }
+  }
+}

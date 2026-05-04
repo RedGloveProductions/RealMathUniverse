@@ -1,0 +1,21 @@
+{
+  "curvature": {
+    "enabled": true,
+    "solver": "curvature_reduced_gpu",
+    "curvature_strength": 1.0,
+    "curvature_softening": 1.0,
+    "time_dilation_scale": 0.0,
+    "baseline_grid_value": 0.0,
+    "center": [0.0, 0.0, 0.0],
+    "particle_coupling_strength": 0.32,
+    "particle_softening": 0.90,
+    "velocity_damping": 0.9992,
+    "max_force": 2.0,
+    "notes": "v0.5A uses reduced curvature-style attraction plus particle collapse behavior controls. Full metric tensor evolution is not claimed."
+  },
+  "black_holes": {
+    "enabled": false,
+    "solver": "black_hole_reduced",
+    "event_horizon_mode": "schwarzschild_inspired_capture_radius"
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "fluid": {
+    "enabled": false,
+    "status": "reserved_expansion_slot",
+    "notes": "Fluid dynamics are planned after core 3D, curvature, fields, datasets, and VCV are stable."
+  }
+}

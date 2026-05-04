@@ -1,0 +1,42 @@
+{
+  "mappings": {
+    "crab_depth_to_higgs_lambda": {
+      "source_dataset": "crab_nav_points",
+      "source_column": "depth",
+      "source_units": "feet_or_unconfirmed_depth_units",
+      "source_range": [
+        12.0,
+        125.0
+      ],
+      "target_physics_variable": "higgs_lambda",
+      "target_range": [
+        0.116,
+        0.142
+      ],
+      "equation_name": "lambda = m_H^2 / (2 v^2)",
+      "mapping_function": "linear",
+      "clamp": true,
+      "confidence": "experimental",
+      "rationale": "Raw depth is mapped into a physics-defined lambda window. The raw value is not treated as lambda directly."
+    },
+    "crab_depth_to_temperature_proxy": {
+      "source_dataset": "crab_nav_points",
+      "source_column": "depth",
+      "source_units": "feet_or_unconfirmed_depth_units",
+      "source_range": [
+        12.0,
+        125.0
+      ],
+      "target_physics_variable": "temperature_field",
+      "target_range": [
+        2.2,
+        3.2
+      ],
+      "equation_name": "T(z)=T0*(1+z) reference family, reduced proxy for v0.1",
+      "mapping_function": "linear",
+      "clamp": true,
+      "confidence": "experimental",
+      "rationale": "Depth distribution position is mapped into a declared temperature-proxy range."
+    }
+  }
+}
