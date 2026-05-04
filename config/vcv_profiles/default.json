@@ -1,0 +1,16 @@
+{
+  "name": "default",
+  "version": "0.9C",
+  "channel_prefix": "/ch/",
+  "notes": "Default VCV OSC profile. Keeps VCV Rack channel names exactly /ch/1, /ch/2, /ch/3, etc.",
+  "channels": {
+    "/ch/1": { "name": "probability", "role": "field probability / gate density" },
+    "/ch/2": { "name": "radial", "role": "radial field weight" },
+    "/ch/3": { "name": "orbital", "role": "orbital / swirl field weight" },
+    "/ch/4": { "name": "vertical", "role": "vertical lift / bend field weight" },
+    "/ch/5": { "name": "turbulence", "role": "turbulence / perturbation field weight" },
+    "/ch/6": { "name": "shell", "role": "shell / horizon pressure field weight" },
+    "/ch/7": { "name": "raw_aux", "role": "reserved raw modulation" },
+    "/ch/8": { "name": "scene", "role": "scene / preset modulation" }
+  }
+}

@@ -1,7 +1,7 @@
 """
 $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 RealMathUniverse Metal Frame Exporter
-Version: 0.6A
+Version: 0.9B
 
 Purpose:
     Export sampled particle positions and HUD-ready metadata for the Swift/Metal
@@ -148,7 +148,7 @@ class MetalFrameExporter:
 
         metadata = {
             "project": "RealMathUniverse",
-            "version": "0.6A",
+            "version": "0.9B",
             "frame_index": self.frame_index,
             "export_count": self.export_count,
             "sim_time": float(sim_time),

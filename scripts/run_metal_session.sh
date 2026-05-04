@@ -1,75 +1,90 @@
 #!/usr/bin/env bash
-set -e
+set -euo pipefail
 
 PROJECT_ROOT="/Users/Joe/Documents/RealMathUniverse"
+SCRIPT_DIR="$PROJECT_ROOT/scripts"
+LOG_DIR="$PROJECT_ROOT/output/logs"
+CORE="$SCRIPT_DIR/run_metal_session_core_pre_0_9c.sh"
+BRIDGE="$SCRIPT_DIR/run_vcv_osc_bridge.sh"
+
+mkdir -p "$LOG_DIR"
+
 PROFILE="${1:-preview}"
 SIZE="${2:-1920x1080}"
 
-RENDERER_DIR="$PROJECT_ROOT/metal_renderer"
-PYTHON_BIN="$PROJECT_ROOT/.venv/bin/python3"
-RENDERER_LOG="$PROJECT_ROOT/output/logs/metal_renderer_session.log"
-SIM_LOG="$PROJECT_ROOT/output/logs/python_simulation_session.log"
+BRIDGE_PID=""
 
-mkdir -p "$PROJECT_ROOT/output/logs"
-mkdir -p "$PROJECT_ROOT/output/metal_live"
+cleanup() {
+  echo ""
+  echo "Stopping RealMathUniverse single-terminal session..."
 
-echo "RealMathUniverse v0.4C single-terminal Metal session"
+  if [[ -n "${BRIDGE_PID:-}" ]]; then
+    if kill -0 "$BRIDGE_PID" >/dev/null 2>&1; then
+      kill "$BRIDGE_PID" >/dev/null 2>&1 || true
+      wait "$BRIDGE_PID" >/dev/null 2>&1 || true
+    fi
+  fi
+
+  pkill -f "vcv_osc_bridge.py" >/dev/null 2>&1 || true
+  pkill -f "RealMathUniverseMetalRenderer" >/dev/null 2>&1 || true
+  pkill -f "metal_frame_exporter.py" >/dev/null 2>&1 || true
+  echo "Session stopped."
+}
+trap cleanup EXIT INT TERM
+
+echo "RealMathUniverse v0.9C3 single-terminal Metal + VCV bridge session"
 echo "Project root: $PROJECT_ROOT"
 echo "Profile:      $PROFILE"
 echo "Size:         $SIZE"
+echo "VCV profiles: removed"
 echo ""
-echo "This starts the Swift/Metal renderer in the background, then runs Python continuously."
-echo "Press Ctrl-C in this terminal to stop the Python simulation and close the renderer."
+echo "This starts the generic VCV OSC bridge first, then starts the existing Metal session."
+echo "VCV cvOSCcv expected setup: Out Port 9000, In Port 7001, Namespace blank, channels /ch/1.../ch/8."
+echo "Press Ctrl-C in this terminal to stop the simulation, renderer, and bridge."
 echo ""
-
-cleanup() {
-    echo ""
-    echo "Stopping RealMathUniverse Metal session..."
-
-    if [ -n "${SIM_PID:-}" ]; then
-        kill "$SIM_PID" 2>/dev/null || true
-    fi
-
-    if [ -n "${RENDERER_PID:-}" ]; then
-        kill "$RENDERER_PID" 2>/dev/null || true
-        wait "$RENDERER_PID" 2>/dev/null || true
-    fi
-
-    echo "Session stopped."
-}
-trap cleanup INT TERM EXIT
-
-cd "$RENDERER_DIR"
-echo "Building Metal renderer..."
-swift build -c release
-
-echo "Starting Metal renderer..."
-swift run -c release RealMathUniverseMetalRenderer \
-    --project-root "$PROJECT_ROOT" \
-    --size "$SIZE" \
-    --always-on-top \
-    > "$RENDERER_LOG" 2>&1 &
-
-RENDERER_PID=$!
-echo "Renderer PID: $RENDERER_PID"
-echo "Renderer log: $RENDERER_LOG"
-
-sleep 1
 
 cd "$PROJECT_ROOT"
-if [ ! -x "$PYTHON_BIN" ]; then
-    echo "ERROR: venv Python not found at $PYTHON_BIN"
-    echo "Run: cd $PROJECT_ROOT && python3 -m venv .venv && source .venv/bin/activate && python3 -m pip install -r requirements.txt"
-    exit 1
+
+if [[ -d "$PROJECT_ROOT/.venv" ]]; then
+  source "$PROJECT_ROOT/.venv/bin/activate"
 fi
 
-echo "Starting Python simulation/exporter. Press Ctrl-C to stop."
-"$PYTHON_BIN" "$PROJECT_ROOT/main.py" \
-    --profile "$PROFILE" \
-    --headless \
-    --warmup-frames 30 \
-    --frames 0 \
-    --status-every 300 \
-    2>&1 | tee "$SIM_LOG"
+if ! python3 - <<'PY' >/dev/null 2>&1
+import pythonosc
+PY
+then
+  echo "Missing dependency inside this Python environment: python-osc"
+  echo "Installing into project venv/current environment..."
+  python3 -m pip install python-osc
+fi
 
-SIM_PID=${PIPESTATUS[0]:-}
+if [[ -x "$BRIDGE" ]]; then
+  echo "Starting generic VCV OSC bridge..."
+  "$BRIDGE" > "$LOG_DIR/vcv_osc_bridge_session.log" 2>&1 &
+  BRIDGE_PID=$!
+  sleep 1
+
+  if kill -0 "$BRIDGE_PID" >/dev/null 2>&1; then
+    echo "VCV OSC bridge running. pid=$BRIDGE_PID"
+    echo "Bridge log: $LOG_DIR/vcv_osc_bridge_session.log"
+  else
+    echo "ERROR: VCV OSC bridge exited immediately. Last log lines:"
+    tail -60 "$LOG_DIR/vcv_osc_bridge_session.log" || true
+    exit 1
+  fi
+else
+  echo "ERROR: $BRIDGE was not found or is not executable."
+  exit 1
+fi
+
+echo ""
+echo "Starting Metal renderer/session..."
+echo ""
+
+if [[ -x "$CORE" ]]; then
+  "$CORE" "$PROFILE" "$SIZE"
+else
+  echo "ERROR: missing core launcher: $CORE"
+  echo "The old launcher should have been saved there by v0.9C."
+  exit 1
+fi

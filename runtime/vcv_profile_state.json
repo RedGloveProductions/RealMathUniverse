@@ -1,0 +1,242 @@
+{
+  "active": true,
+  "active_addresses": [
+    "/ch/1",
+    "/ch/2",
+    "/ch/3",
+    "/ch/4",
+    "/ch/5",
+    "/ch/6",
+    "/ch/7",
+    "/ch/8"
+  ],
+  "age": 0.0,
+  "channel_order": [
+    "/ch/1",
+    "/ch/2",
+    "/ch/3",
+    "/ch/4",
+    "/ch/5",
+    "/ch/6",
+    "/ch/7",
+    "/ch/8"
+  ],
+  "channels": {
+    "/ch/1": {
+      "address": "/ch/1",
+      "field": "probability",
+      "last_seen_age": 123.95953798294067,
+      "max": 1.0,
+      "min": 0.0,
+      "name": "probability",
+      "raw": -5.507338523864746,
+      "role": "global probability / density gate",
+      "smoothing": 0.22,
+      "stats": {
+        "count": 13098,
+        "raw_avg": 0.2488620820936225,
+        "raw_max": 6.5671844482421875,
+        "raw_min": -6.588072776794434,
+        "value_avg": 0.4924828981018938,
+        "value_max": 1.0,
+        "value_min": 0.0
+      },
+      "value": 0.0
+    },
+    "/ch/2": {
+      "address": "/ch/2",
+      "field": "radial",
+      "last_seen_age": 123.96958637237549,
+      "max": 3.0,
+      "min": 0.0,
+      "name": "radial",
+      "raw": 0.0833333358168602,
+      "role": "radial gravity / shell pull",
+      "smoothing": 0.22,
+      "stats": {
+        "count": 7828,
+        "raw_avg": 4.437021082459426,
+        "raw_max": 10.083333969116211,
+        "raw_min": 0.0833333358168602,
+        "value_avg": 2.6559001040108705,
+        "value_max": 3.0,
+        "value_min": 0.10865027521302892
+      },
+      "value": 0.10900163060924369
+    },
+    "/ch/3": {
+      "address": "/ch/3",
+      "field": "orbital",
+      "last_seen_age": 129.27073693275452,
+      "max": 3.0,
+      "min": 0.0,
+      "name": "orbital",
+      "raw": 9.778225898742676,
+      "role": "orbital/tangential circulation",
+      "smoothing": 0.22,
+      "stats": {
+        "count": 20,
+        "raw_avg": 9.76872615814209,
+        "raw_max": 9.779047012329102,
+        "raw_min": 9.759689331054688,
+        "value_avg": 2.9576923076923114,
+        "value_max": 2.999999999999788,
+        "value_min": 2.34
+      },
+      "value": 2.999999999999788
+    },
+    "/ch/4": {
+      "address": "/ch/4",
+      "field": "vertical",
+      "last_seen_age": 124.1608817577362,
+      "max": 3.0,
+      "min": 0.0,
+      "name": "vertical",
+      "raw": 6.708124160766602,
+      "role": "vertical lift/compression",
+      "smoothing": 0.22,
+      "stats": {
+        "count": 7312,
+        "raw_avg": 5.06561924181308,
+        "raw_max": 6.725574493408203,
+        "raw_min": 2.1458418369293213,
+        "value_avg": 2.9509633529935666,
+        "value_max": 3.0,
+        "value_min": 1.7071089792251588
+      },
+      "value": 3.0
+    },
+    "/ch/5": {
+      "address": "/ch/5",
+      "field": "turbulence",
+      "last_seen_age": 123.95908999443054,
+      "max": 3.0,
+      "min": 0.0,
+      "name": "turbulence",
+      "raw": 5.75,
+      "role": "chaos/noise/turbulence amount",
+      "smoothing": 0.22,
+      "stats": {
+        "count": 6551,
+        "raw_avg": 5.123810764840588,
+        "raw_max": 10.0,
+        "raw_min": 0.0,
+        "value_avg": 2.6512853915201178,
+        "value_max": 3.0,
+        "value_min": 0.015499544881157668
+      },
+      "value": 3.0
+    },
+    "/ch/6": {
+      "address": "/ch/6",
+      "field": "shell",
+      "last_seen_age": 123.95860075950623,
+      "max": 3.0,
+      "min": 0.0,
+      "name": "shell",
+      "raw": 3.393110752105713,
+      "role": "outer shell / horizon pressure",
+      "smoothing": 0.22,
+      "stats": {
+        "count": 10044,
+        "raw_avg": 5.184917427827902,
+        "raw_max": 9.99893856048584,
+        "raw_min": 0.0,
+        "value_avg": 2.4851922481038815,
+        "value_max": 3.0,
+        "value_min": 0.0031198884301709496
+      },
+      "value": 3.0
+    },
+    "/ch/7": {
+      "address": "/ch/7",
+      "field": "color",
+      "last_seen_age": 124.12855696678162,
+      "max": 1.0,
+      "min": 0.0,
+      "name": "color",
+      "raw": 10.0,
+      "role": "color modulation",
+      "smoothing": 0.18,
+      "stats": {
+        "count": 298,
+        "raw_avg": 5.0,
+        "raw_max": 10.0,
+        "raw_min": 0.0,
+        "value_avg": 0.49937574736912205,
+        "value_max": 0.8474576271186441,
+        "value_min": 0.0
+      },
+      "value": 0.8474576271186441
+    },
+    "/ch/8": {
+      "address": "/ch/8",
+      "field": "scene",
+      "last_seen_age": 123.97878313064575,
+      "max": 7.0,
+      "min": 0.0,
+      "name": "scene",
+      "raw": 6.449216365814209,
+      "role": "scene/preset modulation",
+      "smoothing": 0.1,
+      "stats": {
+        "count": 7400,
+        "raw_avg": 5.036681503121917,
+        "raw_max": 6.725574493408203,
+        "raw_min": 2.146435260772705,
+        "value_avg": 5.05527027027027,
+        "value_max": 7,
+        "value_min": 2
+      },
+      "value": 6
+    }
+  },
+  "field_control_default": true,
+  "hud": {
+    "active_channels": "/ch/1, /ch/2, /ch/3, /ch/4, /ch/5, /ch/6, /ch/7, /ch/8",
+    "compact_line": "/ch/1 probability=0.00 raw=-5.51 | /ch/2 radial=0.11 raw=0.08 | /ch/3 orbital=3.00 raw=9.78 | /ch/4 vertical=3.00 raw=6.71 | /ch/5 turbulence=3.00 raw=5.75 | /ch/6 shell=3.00 raw=3.39 | /ch/7 color=0.85 raw=10.00 | /ch/8 scene=6.00 raw=6.45",
+    "field_control": "ON",
+    "safe": "ON",
+    "vcv_profile": "default_generic",
+    "vcv_profile_title": "Default Generic Control",
+    "vcv_status": "ACTIVE"
+  },
+  "normalized": {
+    "/ch/1": 0.0,
+    "/ch/2": 0.10900163060924369,
+    "/ch/3": 2.999999999999788,
+    "/ch/4": 3.0,
+    "/ch/5": 3.0,
+    "/ch/6": 3.0,
+    "/ch/7": 0.8474576271186441,
+    "/ch/8": 6
+  },
+  "profile": "default_generic",
+  "profile_intent": "Safe neutral profile for testing any VCV patch without assuming a specific patch structure.",
+  "profile_title": "Default Generic Control",
+  "raw": {
+    "/ch/1": -5.507338523864746,
+    "/ch/2": 0.0833333358168602,
+    "/ch/3": 9.778225898742676,
+    "/ch/4": 6.708124160766602,
+    "/ch/5": 5.75,
+    "/ch/6": 3.393110752105713,
+    "/ch/7": 10.0,
+    "/ch/8": 6.449216365814209
+  },
+  "safe": true,
+  "status": "active",
+  "timestamp": 1777875272.613958,
+  "uptime": 270.18968296051025,
+  "values": {
+    "color": 0.8474576271186441,
+    "orbital": 2.999999999999788,
+    "probability": 0.0,
+    "radial": 0.10900163060924369,
+    "scene": 6,
+    "shell": 3.0,
+    "turbulence": 3.0,
+    "vertical": 3.0
+  },
+  "version": "0.9C"
+}

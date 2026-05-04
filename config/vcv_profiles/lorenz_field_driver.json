@@ -1,0 +1,21 @@
+{
+  "name": "lorenz_field_driver",
+  "version": "0.9C",
+  "channel_prefix": "/ch/",
+  "notes": "VCV profile intended for Lorenz-driven field testing. VCV Rack channels remain unchanged.",
+  "channels": {
+    "/ch/1": { "name": "probability", "role": "probability / event density" },
+    "/ch/2": { "name": "radial", "role": "radial gravity-like pull" },
+    "/ch/3": { "name": "orbital", "role": "orbital swirl / angular field" },
+    "/ch/4": { "name": "vertical", "role": "vertical lift / deformation" },
+    "/ch/5": { "name": "turbulence", "role": "Lorenz-to-envelope turbulence input" },
+    "/ch/6": { "name": "shell", "role": "outer shell / boundary pressure" },
+    "/ch/7": { "name": "raw_aux", "role": "raw auxiliary modulation" },
+    "/ch/8": { "name": "scene", "role": "scene selector / macro" }
+  },
+  "recommended_patch_notes": [
+    "Use VCV modulation into the existing /ch/1 through /ch/8 rows only.",
+    "For Lorenz turbulence testing, route the final modulation to /ch/5.",
+    "Keep cvOSCcv IP at 127.0.0.1, out port 9000, in port 7001 unless changed deliberately."
+  ]
+}

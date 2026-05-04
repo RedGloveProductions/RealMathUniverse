@@ -1,0 +1,96 @@
+RealMathUniverse VCV OSC bridge v0.9C
+Project root: /Users/Joe/Documents/RealMathUniverse
+VCV profile:  default_generic
+Channels:     /ch/1 /ch/2 /ch/3 ...
+
+RealMathUniverse v0.9C VCV OSC Bridge
+Project root: /Users/Joe/Documents/RealMathUniverse
+Profile:      default_generic (Default Generic Control)
+Listening:    127.0.0.1:9000
+Channels:     /ch/1 /ch/2 /ch/3 /ch/4 /ch/5 /ch/6 /ch/7 /ch/8
+State file:   /Users/Joe/Documents/RealMathUniverse/runtime/vcv_osc_state.json
+Press Ctrl-C to stop.
+
+  /ch/1 -> probability  global probability / density gate
+  /ch/2 -> radial       radial gravity / shell pull
+  /ch/3 -> orbital      orbital/tangential circulation
+  /ch/4 -> vertical     vertical lift/compression
+  /ch/5 -> turbulence   chaos/noise/turbulence amount
+  /ch/6 -> shell        outer shell / horizon pressure
+  /ch/7 -> color        color modulation
+  /ch/8 -> scene        scene/preset modulation
+
+VCV default_generic | /ch/1 probability raw=-0.071 value=0.000 | received=1
+VCV default_generic | /ch/4 vertical raw=6.185 value=3.000 | received=791
+VCV default_generic | /ch/4 vertical raw=2.413 value=2.466 | received=1528
+VCV default_generic | /ch/5 turbulence raw=2.333 value=2.357 | received=2304
+VCV default_generic | /ch/1 probability raw=-1.614 value=0.000 | received=2931
+VCV default_generic | /ch/6 shell raw=4.308 value=3.000 | received=3446
+VCV default_generic | /ch/2 radial raw=3.583 value=3.000 | received=4093
+VCV default_generic | /ch/2 radial raw=6.583 value=3.000 | received=4869
+VCV default_generic | /ch/4 vertical raw=4.766 value=3.000 | received=5646
+VCV default_generic | /ch/2 radial raw=8.667 value=3.000 | received=6366
+VCV default_generic | /ch/8 scene raw=6.643 value=7.000 | received=7179
+VCV default_generic | /ch/4 vertical raw=4.360 value=3.000 | received=7901
+VCV default_generic | /ch/5 turbulence raw=1.917 value=1.944 | received=8506
+VCV default_generic | /ch/2 radial raw=5.500 value=3.000 | received=9293
+VCV default_generic | /ch/6 shell raw=4.230 value=3.000 | received=10016
+VCV default_generic | /ch/6 shell raw=4.720 value=3.000 | received=10822
+VCV default_generic | /ch/1 probability raw=-1.971 value=0.000 | received=11439
+VCV default_generic | /ch/1 probability raw=-2.532 value=0.000 | received=12025
+VCV default_generic | /ch/2 radial raw=3.500 value=3.000 | received=12731
+VCV default_generic | /ch/1 probability raw=-1.303 value=0.000 | received=13386
+VCV default_generic | /ch/5 turbulence raw=7.333 value=3.000 | received=14119
+VCV default_generic | /ch/1 probability raw=-0.985 value=0.000 | received=14661
+VCV default_generic | /ch/2 radial raw=3.667 value=3.000 | received=15384
+VCV default_generic | /ch/4 vertical raw=6.010 value=3.000 | received=16221
+VCV default_generic | /ch/6 shell raw=6.474 value=3.000 | received=17066
+VCV default_generic | /ch/1 probability raw=-1.587 value=0.000 | received=17657
+VCV default_generic | /ch/1 probability raw=-4.440 value=0.000 | received=18412
+VCV default_generic | /ch/4 vertical raw=6.418 value=3.000 | received=19212
+VCV default_generic | /ch/4 vertical raw=2.216 value=2.388 | received=19995
+VCV default_generic | /ch/4 vertical raw=3.840 value=2.999 | received=20781
+VCV default_generic | /ch/5 turbulence raw=3.417 value=3.000 | received=21397
+VCV default_generic | /ch/1 probability raw=2.973 value=1.000 | received=22193
+VCV default_generic | /ch/1 probability raw=0.536 value=0.534 | received=22948
+VCV default_generic | /ch/2 radial raw=2.083 value=1.826 | received=23751
+VCV default_generic | /ch/2 radial raw=4.583 value=3.000 | received=24523
+VCV default_generic | /ch/4 vertical raw=5.497 value=3.000 | received=25278
+VCV default_generic | /ch/1 probability raw=-5.757 value=0.000 | received=25881
+VCV default_generic | /ch/1 probability raw=-0.169 value=0.000 | received=26615
+VCV default_generic | /ch/1 probability raw=0.773 value=0.770 | received=27162
+VCV default_generic | /ch/4 vertical raw=6.200 value=2.995 | received=27965
+VCV default_generic | /ch/2 radial raw=5.250 value=3.000 | received=28682
+VCV default_generic | /ch/2 radial raw=5.167 value=3.000 | received=29365
+VCV default_generic | /ch/2 radial raw=8.583 value=3.000 | received=30116
+VCV default_generic | /ch/1 probability raw=-1.330 value=0.000 | received=30783
+VCV default_generic | /ch/6 shell raw=2.134 value=2.101 | received=31373
+VCV default_generic | /ch/8 scene raw=4.400 value=4.000 | received=32013
+VCV default_generic | /ch/4 vertical raw=3.319 value=2.982 | received=32605
+VCV default_generic | /ch/1 probability raw=-6.149 value=0.000 | received=33173
+VCV default_generic | /ch/5 turbulence raw=4.833 value=3.000 | received=33944
+VCV default_generic | /ch/6 shell raw=7.658 value=3.000 | received=34604
+VCV default_generic | /ch/4 vertical raw=4.385 value=3.000 | received=35364
+VCV default_generic | /ch/6 shell raw=8.167 value=3.000 | received=36119
+VCV default_generic | /ch/1 probability raw=5.664 value=1.000 | received=36908
+VCV default_generic | /ch/8 scene raw=5.994 value=6.000 | received=37746
+VCV default_generic | /ch/8 scene raw=4.855 value=5.000 | received=38252
+VCV default_generic | /ch/1 probability raw=-3.980 value=0.000 | received=38839
+VCV default_generic | /ch/1 probability raw=-0.509 value=0.000 | received=39688
+VCV default_generic | /ch/1 probability raw=2.862 value=1.000 | received=40500
+VCV default_generic | /ch/2 radial raw=8.583 value=3.000 | received=41242
+VCV default_generic | /ch/1 probability raw=1.754 value=1.000 | received=41977
+VCV default_generic | /ch/4 vertical raw=6.123 value=3.000 | received=42715
+VCV default_generic | /ch/5 turbulence raw=9.750 value=3.000 | received=43513
+VCV default_generic | /ch/1 probability raw=4.135 value=1.000 | received=44323
+VCV default_generic | /ch/2 radial raw=5.167 value=3.000 | received=45043
+VCV default_generic | /ch/6 shell raw=8.155 value=3.000 | received=45735
+VCV default_generic | /ch/2 radial raw=3.500 value=3.000 | received=46507
+VCV default_generic | /ch/5 turbulence raw=9.583 value=3.000 | received=47343
+VCV default_generic | /ch/4 vertical raw=6.723 value=3.000 | received=48117
+VCV default_generic | /ch/1 probability raw=4.310 value=1.000 | received=48944
+VCV default_generic | /ch/1 probability raw=-0.749 value=0.000 | received=49743
+VCV default_generic | /ch/1 probability raw=-4.785 value=0.000 | received=50423
+VCV default_generic | /ch/6 shell raw=3.643 value=3.000 | received=51239
+VCV default_generic | /ch/2 radial raw=3.583 value=3.000 | received=51762
+VCV default_generic | /ch/6 shell raw=3.316 value=3.000 | received=52520

@@ -1,8 +1,8 @@
 """
 Run summary writer.
 
-v0.5A naming:
-    RealMathUniverse_v0_5A_<profile>_<backend>_<GPU_or_CPU>_<YYYYMMDD_HHMMSS_UTC>_run_summary.json
+v0.9B naming:
+    RealMathUniverse_v0_9B_<profile>_<backend>_<GPU_or_CPU>_<YYYYMMDD_HHMMSS_UTC>_run_summary.json
 """
 
 from __future__ import annotations
@@ -36,14 +36,14 @@ class RunSummaryWriter:
     ) -> Path:
         stamp = _dt.datetime.utcnow().strftime("%Y%m%d_%H%M%S_UTC")
 
-        compute_plain = self._to_plain(compute_report)
+        compute_plain = self._to_plain(compute_report) or {}
         preflight_plain = self._to_plain(preflight_report)
 
         backend_name = self._safe_token(compute_plain.get("backend_name", "unknown"))
         profile_name = self._safe_token(getattr(profile, "name", str(args.profile)))
         gpu_tag = "GPU" if bool(compute_plain.get("is_gpu", False)) else "CPU"
 
-        version_tag = "v0_5A"
+        version_tag = "v0_9B"
         filename = (
             f"RealMathUniverse_{version_tag}_"
             f"{profile_name}_{backend_name}_{gpu_tag}_"
@@ -52,9 +52,16 @@ class RunSummaryWriter:
 
         path = self.summary_dir / filename
 
+        render_config = configs.get("render_config", {})
+        field_layers = {}
+        try:
+            field_layers = render_config.get("render", {}).get("field_layers", {})
+        except Exception:
+            field_layers = {}
+
         summary = {
             "project": "RealMathUniverse",
-            "version": "0.5A",
+            "version": "0.9B",
             "timestamp_utc": _dt.datetime.utcnow().isoformat(timespec="seconds") + "Z",
             "cli": {
                 "profile": args.profile,
@@ -66,14 +73,15 @@ class RunSummaryWriter:
                 "config_dir": str(args.config_dir),
             },
             "profile": asdict(profile) if is_dataclass(profile) else str(profile),
-            "compute_backend": self._to_plain(compute_report),
-            "gpu_preflight": self._to_plain(preflight_report),
+            "compute_backend": compute_plain,
+            "gpu_preflight": preflight_plain,
             "buffers": buffers,
             "solvers": solvers,
             "modules": modules,
             "particle_config": configs.get("particle_config", {}),
             "relativity_config": configs.get("relativity_config", {}),
-            "render_config": configs.get("render_config", {}),
+            "render_config": render_config,
+            "field_layers_config": field_layers,
             "engine_diagnostics": engine_diagnostics or {},
             "elapsed_seconds": elapsed_seconds,
             "config_files_loaded": sorted(configs.keys()),

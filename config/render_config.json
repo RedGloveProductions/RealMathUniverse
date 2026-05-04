@@ -45,7 +45,11 @@
       "center_marker_enabled": true,
       "horizon_ring_enabled": true,
       "compact_hud_enabled": false,
-      "sample_presets": [25000, 50000, 100000]
+      "sample_presets": [
+        25000,
+        50000,
+        100000
+      ]
     },
     "hud_overlays": {
       "enabled": true,
@@ -58,6 +62,79 @@
       "panel_margin": 18,
       "panel_top": 18
     },
-    "notes": "v0.6A adds Metal-side particle trails, center marker, horizon ring, grid toggle, sample preset controls, and compact HUD mode."
+    "notes": "v0.6A adds Metal-side particle trails, center marker, horizon ring, grid toggle, sample preset controls, and compact HUD mode.",
+    "field_layers": {
+      "enabled": true,
+      "default_selected": "orbital",
+      "recipes": {
+        "stable_orbit_cloud": {
+          "radial": 0.25,
+          "orbital": 1.0,
+          "vertical": 0.1,
+          "turbulence": 0.05,
+          "shell": 0.2
+        },
+        "black_hole_capture": {
+          "radial": 0.95,
+          "orbital": 0.75,
+          "vertical": 0.2,
+          "turbulence": 0.08,
+          "shell": 0.4
+        },
+        "accretion_disk": {
+          "radial": 0.35,
+          "orbital": 1.1,
+          "vertical": 0.25,
+          "turbulence": 0.1,
+          "shell": 0.3
+        },
+        "field_pressure_bounce": {
+          "radial": 0.55,
+          "orbital": 0.35,
+          "vertical": 0.45,
+          "turbulence": 0.3,
+          "shell": 0.15
+        },
+        "infinite_collapse": {
+          "radial": 1.15,
+          "orbital": 0.4,
+          "vertical": 0.12,
+          "turbulence": 0.15,
+          "shell": 0.45
+        }
+      }
+    },
+    "curvature_probability_overlays": {
+      "version": "0.9B",
+      "curvature_rings": true,
+      "probability_halo": true,
+      "curvature_ring_count": 7,
+      "probability_halo_points": 4200,
+      "controls": {
+        "G": "toggle grid + probability halo",
+        "O": "toggle center marker + horizon + curvature rings"
+      }
+    },
+    "visual_state_manager": {
+      "version": "0.9B",
+      "enabled": true,
+      "state_slots": 5,
+      "directory": "config/visual_states",
+      "controls": {
+        "CTRL+SHIFT+1-5": "save visual state slot",
+        "CTRL+1-5": "load visual state slot",
+        "SHIFT+6": "gallery orbit camera",
+        "SHIFT+7": "macro disk camera",
+        "SHIFT+8": "wide system camera",
+        "SHIFT+9": "reset default camera",
+        "SHIFT+D": "toggle auto-camera drift"
+      }
+    }
+  },
+  "version": "0.9B",
+  "session": {
+    "default_size": "1920x1080",
+    "full_session_script": "scripts/run_full_vcv_metal_session.sh",
+    "vcv_bridge_required_for_external_control": true
   }
 }

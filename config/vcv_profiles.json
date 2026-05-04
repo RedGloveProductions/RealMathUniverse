@@ -1,0 +1,116 @@
+{
+  "version": "0.9C",
+  "description": "RealMathUniverse VCV performance profiles. Channel addresses remain fixed as /ch/1 through /ch/8. Profiles only change semantic meaning, clamping, smoothing, and documentation labels.",
+  "default_profile": "default_generic",
+  "global": {
+    "osc_listen_host": "127.0.0.1",
+    "osc_listen_port": 9000,
+    "osc_send_host": "127.0.0.1",
+    "osc_send_port": 7001,
+    "state_path": "runtime/vcv_osc_state.json",
+    "profile_state_path": "runtime/vcv_profile_state.json",
+    "stats_path": "runtime/vcv_profile_stats.json",
+    "notes_output_dir": "docs/vcv_patch_notes",
+    "safe_clamp": true,
+    "default_smoothing": 0.22,
+    "deadband": 0.0005
+  },
+  "profiles": {
+    "default_generic": {
+      "title": "Default Generic Control",
+      "intent": "Safe neutral profile for testing any VCV patch without assuming a specific patch structure.",
+      "safe": true,
+      "field_control_default": true,
+      "channels": {
+        "/ch/1": {"name": "probability", "field": "probability", "role": "global probability / density gate", "min": 0.0, "max": 1.0, "default": 0.0, "smoothing": 0.22, "polarity": "unipolar"},
+        "/ch/2": {"name": "radial", "field": "radial", "role": "radial gravity / shell pull", "min": 0.0, "max": 3.0, "default": 0.0, "smoothing": 0.22, "polarity": "unipolar"},
+        "/ch/3": {"name": "orbital", "field": "orbital", "role": "orbital/tangential circulation", "min": 0.0, "max": 3.0, "default": 0.0, "smoothing": 0.22, "polarity": "unipolar"},
+        "/ch/4": {"name": "vertical", "field": "vertical", "role": "vertical lift/compression", "min": 0.0, "max": 3.0, "default": 0.0, "smoothing": 0.22, "polarity": "unipolar"},
+        "/ch/5": {"name": "turbulence", "field": "turbulence", "role": "chaos/noise/turbulence amount", "min": 0.0, "max": 3.0, "default": 0.0, "smoothing": 0.22, "polarity": "unipolar"},
+        "/ch/6": {"name": "shell", "field": "shell", "role": "outer shell / horizon pressure", "min": 0.0, "max": 3.0, "default": 0.0, "smoothing": 0.22, "polarity": "unipolar"},
+        "/ch/7": {"name": "color", "field": "color", "role": "color modulation", "min": 0.0, "max": 1.0, "default": 0.0, "smoothing": 0.18, "polarity": "unipolar"},
+        "/ch/8": {"name": "scene", "field": "scene", "role": "scene/preset modulation", "min": 0.0, "max": 7.0, "default": 0.0, "smoothing": 0.10, "polarity": "stepped"}
+      }
+    },
+    "lorenz_field_driver": {
+      "title": "Lorenz Field Driver",
+      "intent": "Maps Lorenz attractor outputs to field probability, orbital drift, turbulence, and shell pressure.",
+      "safe": true,
+      "field_control_default": true,
+      "channels": {
+        "/ch/1": {"name": "probability", "field": "probability", "role": "Lorenz X attenuated to field probability", "min": 0.0, "max": 1.0, "default": 0.0, "smoothing": 0.30, "polarity": "unipolar"},
+        "/ch/2": {"name": "radial", "field": "radial", "role": "Lorenz Y or slow LFO to radial pressure", "min": 0.0, "max": 2.5, "default": 0.0, "smoothing": 0.35, "polarity": "unipolar"},
+        "/ch/3": {"name": "orbital", "field": "orbital", "role": "Lorenz Z to orbital circulation", "min": 0.0, "max": 3.0, "default": 0.0, "smoothing": 0.25, "polarity": "unipolar"},
+        "/ch/4": {"name": "vertical", "field": "vertical", "role": "slow chaotic vertical lift", "min": 0.0, "max": 2.0, "default": 0.0, "smoothing": 0.35, "polarity": "unipolar"},
+        "/ch/5": {"name": "turbulence", "field": "turbulence", "role": "Lorenz-driven turbulence channel", "min": 0.0, "max": 3.0, "default": 0.0, "smoothing": 0.18, "polarity": "unipolar"},
+        "/ch/6": {"name": "shell", "field": "shell", "role": "shell/horizon response", "min": 0.0, "max": 3.0, "default": 0.0, "smoothing": 0.22, "polarity": "unipolar"},
+        "/ch/7": {"name": "color", "field": "color", "role": "chaotic color drift", "min": 0.0, "max": 1.0, "default": 0.0, "smoothing": 0.20, "polarity": "unipolar"},
+        "/ch/8": {"name": "scene", "field": "scene", "role": "stepped scene selector", "min": 0.0, "max": 7.0, "default": 0.0, "smoothing": 0.08, "polarity": "stepped"}
+      }
+    },
+    "sequencer_envelope_driver": {
+      "title": "Sequencer Envelope Driver",
+      "intent": "For sequencer-gated envelopes where rhythmic CV shapes field layers. Good for patch-specific performance mapping.",
+      "safe": true,
+      "field_control_default": true,
+      "channels": {
+        "/ch/1": {"name": "probability", "field": "probability", "role": "sequencer/envelope probability gate", "min": 0.0, "max": 1.0, "default": 0.0, "smoothing": 0.16, "polarity": "unipolar"},
+        "/ch/2": {"name": "radial", "field": "radial", "role": "envelope radial pulse", "min": 0.0, "max": 3.0, "default": 0.0, "smoothing": 0.12, "polarity": "unipolar"},
+        "/ch/3": {"name": "orbital", "field": "orbital", "role": "sequenced orbital motion", "min": 0.0, "max": 3.0, "default": 0.0, "smoothing": 0.16, "polarity": "unipolar"},
+        "/ch/4": {"name": "vertical", "field": "vertical", "role": "envelope-driven vertical motion", "min": 0.0, "max": 3.0, "default": 0.0, "smoothing": 0.14, "polarity": "unipolar"},
+        "/ch/5": {"name": "turbulence", "field": "turbulence", "role": "ADSR OUT > Quantizer OUT > /ch/5 turbulence", "min": 0.0, "max": 3.0, "default": 0.0, "smoothing": 0.10, "polarity": "unipolar"},
+        "/ch/6": {"name": "shell", "field": "shell", "role": "rhythmic shell pressure", "min": 0.0, "max": 3.0, "default": 0.0, "smoothing": 0.18, "polarity": "unipolar"},
+        "/ch/7": {"name": "color", "field": "color", "role": "stepped or envelope color", "min": 0.0, "max": 1.0, "default": 0.0, "smoothing": 0.08, "polarity": "unipolar"},
+        "/ch/8": {"name": "scene", "field": "scene", "role": "sequenced scene/preset selection", "min": 0.0, "max": 7.0, "default": 0.0, "smoothing": 0.05, "polarity": "stepped"}
+      }
+    },
+    "slow_gravity_drift": {
+      "title": "Slow Gravity Drift",
+      "intent": "Slow, gallery-safe modulation profile for subtle long-form gravitational movement.",
+      "safe": true,
+      "field_control_default": true,
+      "channels": {
+        "/ch/1": {"name": "probability", "field": "probability", "role": "very slow density drift", "min": 0.0, "max": 0.8, "default": 0.0, "smoothing": 0.55, "polarity": "unipolar"},
+        "/ch/2": {"name": "radial", "field": "radial", "role": "slow inward/outward gravity", "min": 0.0, "max": 1.5, "default": 0.0, "smoothing": 0.60, "polarity": "unipolar"},
+        "/ch/3": {"name": "orbital", "field": "orbital", "role": "slow orbital drift", "min": 0.0, "max": 1.5, "default": 0.0, "smoothing": 0.55, "polarity": "unipolar"},
+        "/ch/4": {"name": "vertical", "field": "vertical", "role": "subtle vertical curvature", "min": 0.0, "max": 1.2, "default": 0.0, "smoothing": 0.65, "polarity": "unipolar"},
+        "/ch/5": {"name": "turbulence", "field": "turbulence", "role": "restrained turbulence", "min": 0.0, "max": 1.1, "default": 0.0, "smoothing": 0.55, "polarity": "unipolar"},
+        "/ch/6": {"name": "shell", "field": "shell", "role": "slow shell/horizon drift", "min": 0.0, "max": 1.5, "default": 0.0, "smoothing": 0.60, "polarity": "unipolar"},
+        "/ch/7": {"name": "color", "field": "color", "role": "very slow color drift", "min": 0.0, "max": 1.0, "default": 0.0, "smoothing": 0.50, "polarity": "unipolar"},
+        "/ch/8": {"name": "scene", "field": "scene", "role": "manual or slow scene change", "min": 0.0, "max": 7.0, "default": 0.0, "smoothing": 0.20, "polarity": "stepped"}
+      }
+    },
+    "chaos_burst": {
+      "title": "Chaos Burst",
+      "intent": "Aggressive short-burst modulation. Safe clamps remain enabled, but this profile allows stronger motion.",
+      "safe": true,
+      "field_control_default": true,
+      "channels": {
+        "/ch/1": {"name": "probability", "field": "probability", "role": "burst probability", "min": 0.0, "max": 1.0, "default": 0.0, "smoothing": 0.06, "polarity": "unipolar"},
+        "/ch/2": {"name": "radial", "field": "radial", "role": "radial burst", "min": 0.0, "max": 4.0, "default": 0.0, "smoothing": 0.06, "polarity": "unipolar"},
+        "/ch/3": {"name": "orbital", "field": "orbital", "role": "orbital burst", "min": 0.0, "max": 4.0, "default": 0.0, "smoothing": 0.06, "polarity": "unipolar"},
+        "/ch/4": {"name": "vertical", "field": "vertical", "role": "vertical burst", "min": 0.0, "max": 4.0, "default": 0.0, "smoothing": 0.06, "polarity": "unipolar"},
+        "/ch/5": {"name": "turbulence", "field": "turbulence", "role": "chaos/turbulence burst", "min": 0.0, "max": 5.0, "default": 0.0, "smoothing": 0.04, "polarity": "unipolar"},
+        "/ch/6": {"name": "shell", "field": "shell", "role": "shell shock", "min": 0.0, "max": 4.0, "default": 0.0, "smoothing": 0.06, "polarity": "unipolar"},
+        "/ch/7": {"name": "color", "field": "color", "role": "fast color burst", "min": 0.0, "max": 1.0, "default": 0.0, "smoothing": 0.04, "polarity": "unipolar"},
+        "/ch/8": {"name": "scene", "field": "scene", "role": "scene slam / stepped preset", "min": 0.0, "max": 7.0, "default": 0.0, "smoothing": 0.02, "polarity": "stepped"}
+      }
+    },
+    "gallery_safe": {
+      "title": "Gallery Safe",
+      "intent": "Stable long-duration exhibition profile with conservative clamps and slower smoothing.",
+      "safe": true,
+      "field_control_default": true,
+      "channels": {
+        "/ch/1": {"name": "probability", "field": "probability", "role": "gentle density control", "min": 0.0, "max": 0.65, "default": 0.0, "smoothing": 0.45, "polarity": "unipolar"},
+        "/ch/2": {"name": "radial", "field": "radial", "role": "safe radial control", "min": 0.0, "max": 1.25, "default": 0.0, "smoothing": 0.45, "polarity": "unipolar"},
+        "/ch/3": {"name": "orbital", "field": "orbital", "role": "safe orbital control", "min": 0.0, "max": 1.5, "default": 0.0, "smoothing": 0.40, "polarity": "unipolar"},
+        "/ch/4": {"name": "vertical", "field": "vertical", "role": "safe vertical motion", "min": 0.0, "max": 1.0, "default": 0.0, "smoothing": 0.50, "polarity": "unipolar"},
+        "/ch/5": {"name": "turbulence", "field": "turbulence", "role": "safe turbulence", "min": 0.0, "max": 1.25, "default": 0.0, "smoothing": 0.40, "polarity": "unipolar"},
+        "/ch/6": {"name": "shell", "field": "shell", "role": "safe shell pressure", "min": 0.0, "max": 1.5, "default": 0.0, "smoothing": 0.45, "polarity": "unipolar"},
+        "/ch/7": {"name": "color", "field": "color", "role": "safe color modulation", "min": 0.0, "max": 1.0, "default": 0.0, "smoothing": 0.35, "polarity": "unipolar"},
+        "/ch/8": {"name": "scene", "field": "scene", "role": "safe scene selector", "min": 0.0, "max": 7.0, "default": 0.0, "smoothing": 0.15, "polarity": "stepped"}
+      }
+    }
+  }
+}

@@ -1,12 +1,81 @@
 {
+  "version": "0.9C4",
+  "profile_system": "removed",
+  "enabled": true,
+  "mode": "local_loopback",
+  "host": "127.0.0.1",
+  "listen_host": "127.0.0.1",
+  "receive_host": "127.0.0.1",
+  "receive_port": 9000,
+  "send_host": "127.0.0.1",
+  "send_port": 7001,
+  "vcv_host": "127.0.0.1",
+  "simulation_receive_host": "127.0.0.1",
+  "simulation_receive_port": 9000,
+  "vcv_receive_port": 7001,
+  "stale_after_seconds": 3.0,
+  "auto_detect_signal": true,
+  "fallback_to_internal": true,
+  "channels": {
+    "/ch/1": "probability",
+    "/ch/2": "radial",
+    "/ch/3": "orbital",
+    "/ch/4": "vertical",
+    "/ch/5": "turbulence",
+    "/ch/6": "shell",
+    "/ch/7": "color",
+    "/ch/8": "scene"
+  },
+  "targets": {
+    "/ch/1": "probability_value",
+    "/ch/2": "field_layer_weights[0]",
+    "/ch/3": "field_layer_weights[1]",
+    "/ch/4": "field_layer_weights[2]",
+    "/ch/5": "field_layer_weights[3]",
+    "/ch/6": "field_layer_weights[4]",
+    "/ch/7": "color_mode",
+    "/ch/8": "scene_index"
+  },
+  "probability": {
+    "default_source": "internal",
+    "external_source": "vcv",
+    "fallback_to_internal": true
+  },
   "osc": {
-    "enabled": false,
+    "enabled": true,
     "mode": "local_loopback",
+    "host": "127.0.0.1",
+    "listen_host": "127.0.0.1",
+    "receive_host": "127.0.0.1",
+    "receive_port": 9000,
+    "send_host": "127.0.0.1",
+    "send_port": 7001,
     "vcv_host": "127.0.0.1",
-    "simulation_receive_host": "0.0.0.0",
+    "simulation_receive_host": "127.0.0.1",
     "simulation_receive_port": 9000,
     "vcv_receive_port": 7001,
+    "stale_after_seconds": 3.0,
     "auto_detect_signal": true,
-    "fallback_to_internal": true
+    "fallback_to_internal": true,
+    "channels": {
+      "/ch/1": "probability",
+      "/ch/2": "radial",
+      "/ch/3": "orbital",
+      "/ch/4": "vertical",
+      "/ch/5": "turbulence",
+      "/ch/6": "shell",
+      "/ch/7": "color",
+      "/ch/8": "scene"
+    },
+    "targets": {
+      "/ch/1": "probability_value",
+      "/ch/2": "field_layer_weights[0]",
+      "/ch/3": "field_layer_weights[1]",
+      "/ch/4": "field_layer_weights[2]",
+      "/ch/5": "field_layer_weights[3]",
+      "/ch/6": "field_layer_weights[4]",
+      "/ch/7": "color_mode",
+      "/ch/8": "scene_index"
+    }
   }
 }

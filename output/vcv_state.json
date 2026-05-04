@@ -1,0 +1,39 @@
+{
+  "version": "0.9C3",
+  "timestamp_unix": 1777875654.152246,
+  "updated_by": "vcv_osc_bridge_v0_9C3_no_profiles",
+  "profile_system": "removed",
+  "external_detected": true,
+  "probability_source": "vcv",
+  "native_channels": {
+    "/ch/1": "probability",
+    "/ch/2": "radial",
+    "/ch/3": "orbital",
+    "/ch/4": "vertical",
+    "/ch/5": "turbulence",
+    "/ch/6": "shell",
+    "/ch/7": "color",
+    "/ch/8": "scene"
+  },
+  "raw_channels": [
+    -5.560419082641602,
+    3.0833334922790527,
+    9.651777267456055,
+    6.724818229675293,
+    0.0,
+    9.27310848236084,
+    10.0,
+    6.725088119506836
+  ],
+  "summary": "p=0.00 r=0.93 o=2.90 v=2.02 t=0.00 s=2.78 color=4 scene=4",
+  "probability_value": 0.0,
+  "field_layer_weights": [
+    0.9250000476837159,
+    2.895533180236816,
+    2.0174454689025882,
+    0.0,
+    2.781932544708252
+  ],
+  "color_mode": 4,
+  "scene_index": 4
+}

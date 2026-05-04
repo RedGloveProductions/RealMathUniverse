@@ -1,0 +1,107 @@
+{
+  "version": "0.9B",
+  "presets": {
+    "1_deep_orbit": {
+      "name": "deep_orbit",
+      "behavior_mode": "stable_orbit_cloud",
+      "sample_count": 25000,
+      "color_mode": "depth",
+      "camera_preset": "gallery_orbit",
+      "trails": {
+        "enabled": true,
+        "length": 18
+      },
+      "overlays": {
+        "grid": false,
+        "probability_halo": false,
+        "curvature_rings": true,
+        "horizon": true
+      }
+    },
+    "2_black_hole_gallery": {
+      "name": "black_hole_gallery",
+      "behavior_mode": "black_hole_capture",
+      "sample_count": 50000,
+      "color_mode": "behavior",
+      "camera_preset": "macro_disk",
+      "trails": {
+        "enabled": true,
+        "length": 24
+      },
+      "overlays": {
+        "grid": false,
+        "probability_halo": false,
+        "curvature_rings": true,
+        "horizon": true
+      }
+    },
+    "3_collapse_burst": {
+      "name": "collapse_burst",
+      "behavior_mode": "infinite_collapse",
+      "sample_count": 50000,
+      "color_mode": "thermal",
+      "camera_preset": "gallery_orbit",
+      "trails": {
+        "enabled": true,
+        "length": 30
+      },
+      "overlays": {
+        "grid": false,
+        "probability_halo": true,
+        "curvature_rings": true,
+        "horizon": true
+      }
+    },
+    "4_field_pressure_demo": {
+      "name": "field_pressure_demo",
+      "behavior_mode": "field_pressure_bounce",
+      "sample_count": 25000,
+      "color_mode": "thermal",
+      "camera_preset": "wide_system",
+      "trails": {
+        "enabled": true,
+        "length": 16
+      },
+      "overlays": {
+        "grid": true,
+        "probability_halo": true,
+        "curvature_rings": true,
+        "horizon": true
+      }
+    },
+    "5_clean_accretion_disk": {
+      "name": "clean_accretion_disk",
+      "behavior_mode": "accretion_disk",
+      "sample_count": 100000,
+      "color_mode": "radial",
+      "camera_preset": "macro_disk",
+      "trails": {
+        "enabled": true,
+        "length": 22
+      },
+      "overlays": {
+        "grid": false,
+        "probability_halo": false,
+        "curvature_rings": false,
+        "horizon": false
+      }
+    },
+    "6_wide_probability_cloud": {
+      "name": "wide_probability_cloud",
+      "behavior_mode": "stable_orbit_cloud",
+      "sample_count": 100000,
+      "color_mode": "depth",
+      "camera_preset": "wide_system",
+      "trails": {
+        "enabled": true,
+        "length": 12
+      },
+      "overlays": {
+        "grid": true,
+        "probability_halo": true,
+        "curvature_rings": true,
+        "horizon": true
+      }
+    }
+  }
+}

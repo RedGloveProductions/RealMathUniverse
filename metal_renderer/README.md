@@ -1,50 +1,48 @@
-# RealMathUniverse Metal Renderer v0.6C
+# RealMathUniverse Metal Renderer v0.9B
 
-## New in v0.6C
+## Purpose
 
-- Frame-time performance monitoring
-- Late-frame warning flag
-- Presentation mode can be toggled with `Y` or `F`
-- Configurable burst count with `;` and `'`
-- Configurable burst interval with `U` and `I`
-- Per-session screenshot folders
-- Separate capture manifests in `output/manifests/`
-- Markdown session summary generated with captures
-- Direct presentation renderer helper script
+v0.9B keeps VCV input generic. It does not specialize the renderer around any temporary test patch.
 
-## Important controls
+The goal is to make `/ch/1` through `/ch/8` stable enough that custom VCV Rack patches can be designed freely later.
+
+## Stable VCV channels
 
 ```text
-Y / F   toggle presentation mode
-S       normal screenshot
-J       clean screenshot
-K       screenshot burst
-L       clean screenshot burst
-; / '   decrease / increase burst count
-U / I   decrease / increase burst interval
-H       HUD on/off
-M       compact HUD
-G       grid
-O       center marker + horizon ring
+/ch/1  probability
+/ch/2  radial field weight
+/ch/3  orbital field weight
+/ch/4  vertical field weight
+/ch/5  turbulence field weight
+/ch/6  shell field weight
+/ch/7  color mode
+/ch/8  scene index
 ```
 
-## Build
+## Added in v0.9B
 
-```bash
-cd /Users/Joe/Documents/RealMathUniverse/metal_renderer
-swift build -c release
+```text
+generic per-channel labels
+generic per-channel target metadata
+raw and smoothed channel display
+VCV safe mode
+safe clamp status in HUD
+per-channel enable/disable retained
 ```
 
-## Normal run
+## Controls
+
+```text
+SHIFT+V          toggle VCV field control
+SHIFT+O          show/hide OSC monitor in HUD
+SHIFT+C          toggle VCV safe mode / clamping
+OPT+SHIFT+1-8    enable/disable individual VCV channels
+```
+
+## Run
 
 ```bash
 cd /Users/Joe/Documents/RealMathUniverse
-./scripts/run_metal_session.sh preview 1920x1080
-```
-
-## Direct presentation renderer
-
-```bash
-cd /Users/Joe/Documents/RealMathUniverse
-./scripts/run_metal_presentation_direct.sh 1920x1080
+source .venv/bin/activate
+./scripts/run_full_vcv_metal_session.sh preview 1920x1080
 ```

@@ -1,0 +1,43 @@
+{
+  "version": "0.9C4",
+  "profile_system": "removed",
+  "native_channels": {
+    "/ch/1": "probability",
+    "/ch/2": "radial",
+    "/ch/3": "orbital",
+    "/ch/4": "vertical",
+    "/ch/5": "turbulence",
+    "/ch/6": "shell",
+    "/ch/7": "color",
+    "/ch/8": "scene"
+  },
+  "targets": {
+    "/ch/1": "probability_value",
+    "/ch/2": "field_layer_weights[0]",
+    "/ch/3": "field_layer_weights[1]",
+    "/ch/4": "field_layer_weights[2]",
+    "/ch/5": "field_layer_weights[3]",
+    "/ch/6": "field_layer_weights[4]",
+    "/ch/7": "color_mode",
+    "/ch/8": "scene_index"
+  },
+  "safe_clamps": {
+    "probability_value": [
+      0.0,
+      1.0
+    ],
+    "field_layer_weights": [
+      0.0,
+      3.0
+    ],
+    "color_mode": [
+      0,
+      4
+    ],
+    "scene_index": [
+      1,
+      6
+    ]
+  },
+  "notes": "Fixed generic /ch/1 through /ch/8 channel contract. No VCV profile system."
+}
