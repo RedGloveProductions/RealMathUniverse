@@ -186,7 +186,8 @@ final class HUDOverlayController {
 
         if compactMode {
             statsText.stringValue = """
-            RMU v0.6B1 | \(fileStatus) | \(String(format: "%.1f", renderer.currentFPS)) fps
+            RMU v0.6C | \(fileStatus) | \(String(format: "%.1f", renderer.currentFPS)) fps
+            frame \(String(format: "%.2f", renderer.currentFrameTimeMS)) ms | late \(renderer.lateFrameWarning)
             \(frameLoader.behaviorMode) | \(renderer.colorModeName)
             points \(frameLoader.latestPointCount) / source \(frameLoader.sourceParticleCount)
             sim \(String(format: "%.1f", frameLoader.latestSimTime)) | radius \(String(format: "%.2f", displayRadius))
@@ -195,8 +196,9 @@ final class HUDOverlayController {
 
             controlsText.stringValue = """
             S shot  J clean  K burst  L clean burst
-            H hud  Y presentation  G grid  O rings
+            Y/F presentation  H hud  G grid  O rings
             M compact  N clear trails  C color
+            ;/' burst count  U/I interval
             8/9/0 samples 25/50/100k  X reset
             ESC quit
             """
@@ -204,9 +206,11 @@ final class HUDOverlayController {
         }
 
         statsText.stringValue = """
-        REALMATHUNIVERSE v0.6B1
+        REALMATHUNIVERSE v0.6C
         status: \(fileStatus)
         renderer fps: \(String(format: "%.1f", renderer.currentFPS))
+        frame time ms: \(String(format: "%.2f", renderer.currentFrameTimeMS))
+        late frame warning: \(renderer.lateFrameWarning)
         renderer frame: \(renderer.frameIndex)
         point count: \(frameLoader.latestPointCount)
         source particles: \(frameLoader.sourceParticleCount)
@@ -237,12 +241,15 @@ final class HUDOverlayController {
 
         S       save screenshot
         J       save clean screenshot
-        K       screenshot burst (5)
-        L       clean screenshot burst (5)
+        K       screenshot burst
+        L       clean screenshot burst
+        burst   count/interval adjusted with ;/' and U/I
         T       toggle always-on-top
         H       show/hide all HUD overlays
-        Y       toggle presentation mode
+        Y / F   toggle presentation mode
         M       compact HUD mode
+        ; / '   decrease / increase burst count
+        U / I   decrease / increase burst interval
         1 / 2   stats / controls overlay
 
         3       preset: stable orbit cloud
@@ -303,6 +310,8 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
     var lastFPSPrintTime = CFAbsoluteTimeGetCurrent()
     var framesSincePrint = 0
     var currentFPS: Double = 0.0
+    var currentFrameTimeMS: Double = 0.0
+    var lateFrameWarning: Bool = false
 
     var pointSize: Float = 2.0
     var manualWorldRadius: Float? = nil
@@ -469,6 +478,7 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
     }
 
     func draw(in view: MTKView) {
+        let drawStart = CFAbsoluteTimeGetCurrent()
         frameLoader.loadIfNeeded()
         updateParticleBufferIfNeeded()
 
@@ -519,6 +529,9 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
         encoder.endEncoding()
         commandBuffer.present(drawable)
         commandBuffer.commit()
+
+        currentFrameTimeMS = (CFAbsoluteTimeGetCurrent() - drawStart) * 1000.0
+        lateFrameWarning = currentFrameTimeMS > 20.0 || currentFPS < 54.0
 
         frameIndex += 1
         framesSincePrint += 1
@@ -625,6 +638,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     var alwaysOnTop = false
     var projectRoot = "/Users/Joe/Documents/RealMathUniverse"
     var currentRespawn = false
+    var burstCount = 5
+    var burstInterval: TimeInterval = 0.40
+    var cleanCaptureDelay: TimeInterval = 0.08
     var borderlessWindow = false
     var hiddenTitlebar = false
     let sessionID: String = {
@@ -680,7 +696,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         let window = KeyCatcherWindow(contentRect: frame, styleMask: styleMask, backing: .buffered, defer: false)
-        window.title = "RealMathUniverse Metal Renderer v0.6B1"
+        window.title = "RealMathUniverse Metal Renderer v0.6C"
         window.center()
         window.isReleasedWhenClosed = false
         if alwaysOnTop { window.level = .floating }
@@ -720,10 +736,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         window.makeKeyAndOrderFront(nil)
         window.orderFrontRegardless()
 
-        print("RealMathUniverse Metal Renderer v0.6B1")
+        print("RealMathUniverse Metal Renderer v0.6C")
         print("Project root: \(projectRoot)")
         print("Session ID: \(sessionID)")
-        print("Keys: S shot | J clean | K burst | L clean burst | H HUD | Y presentation | P trails | G grid | O rings | ESC quit")
+        print("Keys: S shot | J clean | K burst | L clean burst | H HUD | Y/F presentation | ;/' burst count | U/I interval | P trails | G grid | O rings | ESC quit")
         if borderlessWindow { print("Window mode: borderless") }
         if hiddenTitlebar { print("Window mode: hidden titlebar") }
 
@@ -758,12 +774,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         switch characters {
         case "s": saveWindowScreenshot(clean: false)
         case "j": saveWindowScreenshot(clean: true)
-        case "k": captureBurst(clean: false, total: 5, interval: 0.40)
-        case "l": captureBurst(clean: true, total: 5, interval: 0.40)
+        case "k": captureBurst(clean: false, total: burstCount, interval: burstInterval)
+        case "l": captureBurst(clean: true, total: burstCount, interval: burstInterval)
         case "t": alwaysOnTop.toggle(); window?.level = alwaysOnTop ? .floating : .normal
         case "h": hud?.toggleAll(); hud?.updateText()
-        case "y": togglePresentationMode()
+        case "y", "f": togglePresentationMode()
         case "m": hud?.toggleCompact()
+        case ";": decreaseBurstCount()
+        case "'": increaseBurstCount()
+        case "u": decreaseBurstInterval()
+        case "i": increaseBurstInterval()
         case "1": hud?.toggleStats()
         case "2": hud?.toggleControls()
         case "3": writePreset(behavior: "stable_orbit_cloud", respawn: false, pointSize: 2.0, radiusMultiplier: 1.0, colorMode: 0)
@@ -872,12 +892,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             .appendingPathComponent("output")
             .appendingPathComponent("screenshots")
             .appendingPathComponent("metal")
+            .appendingPathComponent(sessionID)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir
+    }
+
+    func manifestDir() -> URL {
+        let dir = URL(fileURLWithPath: projectRoot)
+            .appendingPathComponent("output")
+            .appendingPathComponent("manifests")
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         return dir
     }
 
     func manifestURL() -> URL {
-        screenshotsDir().appendingPathComponent("RealMathUniverse_v0_6B_capture_manifest_\(sessionID).json")
+        manifestDir().appendingPathComponent("RealMathUniverse_v0_6C_capture_manifest_\(sessionID).json")
+    }
+
+    func markdownSummaryURL() -> URL {
+        manifestDir().appendingPathComponent("RealMathUniverse_v0_6C_session_summary_\(sessionID).md")
     }
 
     func sanitized(_ value: String) -> String {
@@ -970,7 +1003,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 burstSuffix = ""
             }
 
-            let fileName = "RealMathUniverse_v0_6B_\(behavior)_\(color)_\(sample)_\(captureType)\(burstSuffix)_\(stamp)_UTC.png"
+            let fileName = "RealMathUniverse_v0_6C_\(behavior)_\(color)_\(sample)_\(captureType)\(burstSuffix)_\(stamp)_UTC.png"
             let url = self.screenshotsDir().appendingPathComponent(fileName)
             guard let destination = CGImageDestinationCreateWithURL(url as CFURL, "public.png" as CFString, 1, nil) else {
                 print("Screenshot failed: could not create destination.")
@@ -993,7 +1026,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             renderer?.gridEnabled = false
             renderer?.centerMarkerEnabled = false
             renderer?.horizonRingEnabled = false
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + cleanCaptureDelay) {
                 performCapture()
                 self.applyOverlaySnapshot(snapshot)
             }
@@ -1036,7 +1069,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             "timestamp_unix": Date().timeIntervalSince1970,
             "timestamp_utc": iso.string(from: Date()),
             "filename": fileURL.lastPathComponent,
-            "relative_path": "output/screenshots/metal/\(fileURL.lastPathComponent)",
+            "relative_path": "output/screenshots/metal/\(sessionID)/\(fileURL.lastPathComponent)",
             "behavior_mode": renderer?.frameLoader.behaviorMode ?? "unknown",
             "color_mode": renderer?.colorModeName ?? "unknown",
             "render_sample_count": renderer?.frameLoader.renderSampleCount ?? 0,
@@ -1048,18 +1081,88 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             "clean_capture": clean,
             "burst_index": burstIndex ?? 1,
             "burst_total": burstTotal ?? 1,
-            "window_mode": currentWindowModeLabel()
+            "window_mode": currentWindowModeLabel(),
+            "presentation_mode": renderer?.presentationModeEnabled ?? false,
+            "frame_time_ms": renderer?.currentFrameTimeMS ?? 0.0,
+            "late_frame_warning": renderer?.lateFrameWarning ?? false,
+            "trail_length": renderer?.trailLength ?? 0,
+            "trails_enabled": renderer?.trailsEnabled ?? false,
+            "grid_enabled": renderer?.gridEnabled ?? false,
+            "center_marker_enabled": renderer?.centerMarkerEnabled ?? false,
+            "horizon_ring_enabled": renderer?.horizonRingEnabled ?? false,
+            "burst_count_setting": burstCount,
+            "burst_interval_setting": burstInterval
         ]
 
         captures.append(entry)
         manifest["session_id"] = sessionID
-        manifest["renderer_version"] = "v0.6B1"
+        manifest["renderer_version"] = "v0.6C"
         manifest["project_root"] = projectRoot
         manifest["window_mode"] = currentWindowModeLabel()
         manifest["captures"] = captures
         manifest["capture_count"] = captures.count
         manifest["last_updated_utc"] = iso.string(from: Date())
         writeJSON(manifest, to: url)
+        writeSessionSummaryMarkdown(captures: captures, lastUpdatedUTC: iso.string(from: Date()))
+    }
+
+    func writeSessionSummaryMarkdown(captures: [[String: Any]], lastUpdatedUTC: String) {
+        var lines: [String] = []
+        lines.append("# RealMathUniverse v0.6C Session Summary")
+        lines.append("")
+        lines.append("- Session ID: \(sessionID)")
+        lines.append("- Last updated UTC: \(lastUpdatedUTC)")
+        lines.append("- Project root: \(projectRoot)")
+        lines.append("- Window mode: \(currentWindowModeLabel())")
+        lines.append("- Capture count: \(captures.count)")
+        lines.append("- Burst count setting: \(burstCount)")
+        lines.append("- Burst interval setting: \(String(format: "%.2f", burstInterval)) seconds")
+        lines.append("")
+        lines.append("## Captures")
+        lines.append("")
+        lines.append("| # | File | Behavior | Color | Sample | Clean | FPS | Frame ms |")
+        lines.append("|---:|---|---|---|---:|---|---:|---:|")
+        for (index, capture) in captures.enumerated() {
+            let filename = capture["filename"] as? String ?? "unknown"
+            let behavior = capture["behavior_mode"] as? String ?? "unknown"
+            let color = capture["color_mode"] as? String ?? "unknown"
+            let sample = capture["render_sample_count"] as? Int ?? 0
+            let clean = capture["clean_capture"] as? Bool ?? false
+            let fps = capture["fps"] as? Double ?? 0.0
+            let frameMS = capture["frame_time_ms"] as? Double ?? 0.0
+            lines.append("| \(index + 1) | \(filename) | \(behavior) | \(color) | \(sample) | \(clean) | \(String(format: "%.1f", fps)) | \(String(format: "%.2f", frameMS)) |")
+        }
+        lines.append("")
+        let body = lines.joined(separator: "\n") + "\n"
+        do {
+            try body.write(to: markdownSummaryURL(), atomically: true, encoding: .utf8)
+        } catch {
+            print("Failed to write markdown session summary: \(error)")
+        }
+    }
+
+    func increaseBurstCount() {
+        burstCount = min(burstCount + 1, 30)
+        print("Burst count: \(burstCount)")
+        hud?.updateText()
+    }
+
+    func decreaseBurstCount() {
+        burstCount = max(burstCount - 1, 1)
+        print("Burst count: \(burstCount)")
+        hud?.updateText()
+    }
+
+    func increaseBurstInterval() {
+        burstInterval = min(burstInterval + 0.10, 5.00)
+        print("Burst interval: \(String(format: "%.2f", burstInterval))")
+        hud?.updateText()
+    }
+
+    func decreaseBurstInterval() {
+        burstInterval = max(burstInterval - 0.10, 0.10)
+        print("Burst interval: \(String(format: "%.2f", burstInterval))")
+        hud?.updateText()
     }
 }
 

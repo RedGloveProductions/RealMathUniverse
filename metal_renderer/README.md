@@ -1,33 +1,50 @@
-# RealMathUniverse Metal Renderer v0.6B
+# RealMathUniverse Metal Renderer v0.6C
 
-This update adds presentation and capture workflow controls on top of v0.6A1.
+## New in v0.6C
 
-## New in v0.6B
+- Frame-time performance monitoring
+- Late-frame warning flag
+- Presentation mode can be toggled with `Y` or `F`
+- Configurable burst count with `;` and `'`
+- Configurable burst interval with `U` and `I`
+- Per-session screenshot folders
+- Separate capture manifests in `output/manifests/`
+- Markdown session summary generated with captures
+- Direct presentation renderer helper script
 
-- Presentation mode that hides HUD and visual overlays
-- Clean screenshot hotkey
-- Screenshot burst mode
-- Clean screenshot burst mode
-- Screenshot filenames that include behavior, color mode, and sample count
-- Per-session capture manifest JSON logging all saved captures
-- Command-line window modes for borderless and hidden-titlebar launches
-
-## Hotkeys
+## Important controls
 
 ```text
-S       save screenshot
-J       save clean screenshot
-K       screenshot burst (5)
-L       clean screenshot burst (5)
-H       show/hide HUD overlays
-Y       toggle presentation mode
-G       toggle grid
-O       toggle center marker + horizon ring
+Y / F   toggle presentation mode
+S       normal screenshot
+J       clean screenshot
+K       screenshot burst
+L       clean screenshot burst
+; / '   decrease / increase burst count
+U / I   decrease / increase burst interval
+H       HUD on/off
+M       compact HUD
+G       grid
+O       center marker + horizon ring
 ```
 
-## Window launch options
+## Build
 
 ```bash
---borderless
---hidden-titlebar
+cd /Users/Joe/Documents/RealMathUniverse/metal_renderer
+swift build -c release
+```
+
+## Normal run
+
+```bash
+cd /Users/Joe/Documents/RealMathUniverse
+./scripts/run_metal_session.sh preview 1920x1080
+```
+
+## Direct presentation renderer
+
+```bash
+cd /Users/Joe/Documents/RealMathUniverse
+./scripts/run_metal_presentation_direct.sh 1920x1080
 ```
