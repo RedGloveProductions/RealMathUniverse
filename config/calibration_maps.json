@@ -1,42 +1,98 @@
 {
-  "mappings": {
-    "crab_depth_to_higgs_lambda": {
-      "source_dataset": "crab_nav_points",
-      "source_column": "depth",
-      "source_units": "feet_or_unconfirmed_depth_units",
-      "source_range": [
-        12.0,
-        125.0
-      ],
-      "target_physics_variable": "higgs_lambda",
-      "target_range": [
-        0.116,
-        0.142
-      ],
-      "equation_name": "lambda = m_H^2 / (2 v^2)",
+  "version": "1.1B",
+  "mappings": [
+    {
+      "mapping_name": "crab_longitude_to_x",
+      "source_dataset": "data/raw/merged_navdata.csv",
+      "source_column_candidates": ["Longitude", "longitude", "lon", "Lon", "LON", "lng", "Lng", "LNG", "x", "X", "Long", "long"],
+      "source_units": "decimal_degrees_or_unknown",
+      "source_range_method": "observed_min_max",
+      "target_physics_variable": "x_coordinate",
+      "target_reference_range": [-1.0, 1.0],
       "mapping_function": "linear",
       "clamp": true,
-      "confidence": "experimental",
-      "rationale": "Raw depth is mapped into a physics-defined lambda window. The raw value is not treated as lambda directly."
+      "confidence": "inferred",
+      "rationale": "Longitude becomes the east-west simulation coordinate after normalized calibration. v1.1B adds forgiving column aliases."
     },
-    "crab_depth_to_temperature_proxy": {
-      "source_dataset": "crab_nav_points",
-      "source_column": "depth",
-      "source_units": "feet_or_unconfirmed_depth_units",
-      "source_range": [
-        12.0,
-        125.0
-      ],
-      "target_physics_variable": "temperature_field",
-      "target_range": [
-        2.2,
-        3.2
-      ],
-      "equation_name": "T(z)=T0*(1+z) reference family, reduced proxy for v0.1",
+    {
+      "mapping_name": "crab_latitude_to_z",
+      "source_dataset": "data/raw/merged_navdata.csv",
+      "source_column_candidates": ["Latitude", "latitude", "lat", "Lat", "LAT", "z", "Z"],
+      "source_units": "decimal_degrees_or_unknown",
+      "source_range_method": "observed_min_max",
+      "target_physics_variable": "z_coordinate",
+      "target_reference_range": [-1.0, 1.0],
       "mapping_function": "linear",
       "clamp": true,
+      "confidence": "inferred",
+      "rationale": "Latitude becomes the north-south simulation coordinate after normalized calibration. v1.1B adds forgiving column aliases."
+    },
+    {
+      "mapping_name": "crab_depth_to_y",
+      "source_dataset": "data/raw/merged_navdata.csv",
+      "source_column_candidates": ["Depth", "depth", "depth_ft", "Depth_ft", "DEPTH", "water_depth", "WaterDepth", "water depth", "Elevation", "elevation", "ELEVATION", "elev", "Elev", "altitude", "Altitude", "z", "Z", "y", "Y"],
+      "source_units": "feet_or_unconfirmed_depth_units",
+      "source_range_method": "percentile_1_to_99",
+      "target_physics_variable": "y_coordinate",
+      "target_reference_range": [-0.75, 0.75],
+      "mapping_function": "percentile_linear",
+      "clamp": true,
       "confidence": "experimental",
-      "rationale": "Depth distribution position is mapped into a declared temperature-proxy range."
+      "rationale": "Depth/elevation becomes a vertical structure channel only after percentile calibration."
+    },
+    {
+      "mapping_name": "crab_depth_to_temperature_proxy",
+      "source_dataset": "data/raw/merged_navdata.csv",
+      "source_column_candidates": ["Depth", "depth", "depth_ft", "Depth_ft", "DEPTH", "water_depth", "WaterDepth", "water depth", "Elevation", "elevation", "ELEVATION", "elev", "Elev", "altitude", "Altitude", "z", "Z", "y", "Y"],
+      "source_units": "feet_or_unconfirmed_depth_units",
+      "source_range_method": "percentile_1_to_99",
+      "target_physics_variable": "temperature_field",
+      "target_reference_range": [0.05, 1.00],
+      "mapping_function": "percentile_linear",
+      "clamp": true,
+      "confidence": "experimental",
+      "rationale": "Depth/elevation drives a temperature/energy agitation proxy through declared calibration, not direct raw insertion."
+    },
+    {
+      "mapping_name": "crab_density_to_curvature_density",
+      "source_dataset": "data/raw/merged_navdata.csv",
+      "source_column_candidates": ["track_density", "TrackDensity", "track density", "density", "Density", "DENSITY", "cluster_density", "point_density", "weight", "Weight", "count", "Count"],
+      "derived_if_missing": "grid_track_density_from_lat_lon",
+      "source_units": "points_per_grid_cell_or_derived_density",
+      "source_range_method": "percentile_1_to_99",
+      "target_physics_variable": "curvature_density",
+      "target_reference_range": [0.00, 1.00],
+      "mapping_function": "percentile_linear",
+      "clamp": true,
+      "confidence": "experimental",
+      "rationale": "Dense route regions become stronger curvature seeds after normalized density estimation."
+    },
+    {
+      "mapping_name": "crab_depth_to_higgs_lambda",
+      "source_dataset": "data/raw/merged_navdata.csv",
+      "source_column_candidates": ["Depth", "depth", "depth_ft", "Depth_ft", "DEPTH", "water_depth", "WaterDepth", "water depth", "Elevation", "elevation", "ELEVATION", "elev", "Elev", "altitude", "Altitude", "z", "Z", "y", "Y"],
+      "source_units": "feet_or_unconfirmed_depth_units",
+      "source_range_method": "percentile_1_to_99",
+      "target_physics_variable": "higgs_lambda_field",
+      "target_reference_range": [0.05, 0.80],
+      "mapping_function": "percentile_linear",
+      "clamp": true,
+      "confidence": "experimental",
+      "rationale": "Depth/elevation can produce regional lambda variation without treating raw depth as a physics constant."
+    },
+    {
+      "mapping_name": "crab_density_to_probability_weight",
+      "source_dataset": "data/raw/merged_navdata.csv",
+      "source_column_candidates": ["track_density", "TrackDensity", "track density", "density", "Density", "DENSITY", "cluster_density", "point_density", "weight", "Weight", "count", "Count"],
+      "derived_if_missing": "grid_track_density_from_lat_lon",
+      "source_units": "points_per_grid_cell_or_derived_density",
+      "source_range_method": "percentile_1_to_99",
+      "target_physics_variable": "probability_weight",
+      "target_reference_range": [0.05, 0.95],
+      "mapping_function": "percentile_linear",
+      "clamp": true,
+      "confidence": "experimental",
+      "rationale": "Route concentration becomes an event/probability weighting layer."
     }
-  }
+  ]
 }

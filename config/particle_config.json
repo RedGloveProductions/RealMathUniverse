@@ -1,20 +1,6 @@
 {
-  "particles": {
-    "enabled": true,
-    "species_table": "src.physics.particles.particle_species.PARTICLE_SPECIES",
-    "default_species": "electron",
-    "default_sim_mass": 1.0,
-    "use_struct_of_arrays": true,
-    "initialization_mode": "deterministic_spiral_cloud",
-    "initial_cloud_radius": 5.0,
-    "initial_cloud_vertical_scale": 0.45,
-    "initial_swirl_velocity": 0.04,
-    "v0_1_initial_x_velocity": 0.05,
-    "notes": "v0.5A uses collapse behavior controls to prevent uncontrolled infinitesimal collapse unless selected deliberately."
-  },
   "collapse_behavior": {
-    "enabled": true,
-    "behavior_mode": "stable_orbit_cloud",
+    "angular_momentum_preservation": 0.18,
     "available_modes": [
       "infinite_collapse",
       "black_hole_capture",
@@ -22,15 +8,40 @@
       "accretion_disk",
       "field_pressure_bounce"
     ],
-    "minimum_radius": 0.24,
+    "behavior_mode": "stable_orbit_cloud",
     "capture_radius": 0.075,
-    "event_horizon_visual_radius": 0.34,
-    "core_pressure_strength": 0.22,
     "core_pressure_radius": 0.95,
+    "core_pressure_strength": 0.22,
+    "enabled": true,
+    "event_horizon_visual_radius": 0.34,
+    "minimum_radius": 0.24,
+    "notes": "stable_orbit_cloud is the default. infinite_collapse can reproduce the prior collapse behavior. black_hole_capture pins captured particles near a visual horizon. respawn_on_capture can recycle particles for installation-style continuous motion.",
     "orbital_floor_velocity": 0.035,
-    "angular_momentum_preservation": 0.18,
     "respawn_on_capture": false,
     "respawn_radius": 5.2,
-    "notes": "stable_orbit_cloud is the default. infinite_collapse can reproduce the prior collapse behavior. black_hole_capture pins captured particles near a visual horizon. respawn_on_capture can recycle particles for installation-style continuous motion."
+    "v1_3A_note": "Geospatial crab particle field starts paused/stable. Press SPACE in renderer to arm/run.",
+    "v1_3B_note": "Safe geospatial startup. Physics remains paused until SPACE/runtime_state arms it.",
+    "v1_3C_note": "Geospatial crab data must bind to Python solver buffers. Expected particle count equals CSV row count."
+  },
+  "particles": {
+    "default_sim_mass": 1.0,
+    "default_species": "electron",
+    "enabled": true,
+    "geospatial_mass_density_scale": 0.25,
+    "geospatial_source_csv": "/Users/Joe/Documents/RealMathUniverse/data/raw/merged_navdata.csv",
+    "geospatial_vertical_scale": 1.2,
+    "geospatial_world_radius": 5.75,
+    "initial_cloud_radius": 5.0,
+    "initial_cloud_vertical_scale": 0.45,
+    "initial_swirl_velocity": 0.04,
+    "initialization_mode": "geospatial_crab_field",
+    "notes": "v0.5A uses collapse behavior controls to prevent uncontrolled infinitesimal collapse unless selected deliberately.",
+    "particle_count": 99966,
+    "spacebar_mode": "run_pause_geospatial",
+    "species_table": "src.physics.particles.particle_species.PARTICLE_SPECIES",
+    "startup_paused": true,
+    "use_struct_of_arrays": true,
+    "v0_1_initial_x_velocity": 0.05,
+    "v1_3B_note": "Python solver buffers are allocated from merged_navdata.csv row count; expected current count is 99966."
   }
 }

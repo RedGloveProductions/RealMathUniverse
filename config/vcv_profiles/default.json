@@ -1,16 +1,161 @@
 {
   "name": "default",
-  "version": "0.9C",
+  "version": "1.3F5",
   "channel_prefix": "/ch/",
   "notes": "Default VCV OSC profile. Keeps VCV Rack channel names exactly /ch/1, /ch/2, /ch/3, etc.",
   "channels": {
-    "/ch/1": { "name": "probability", "role": "field probability / gate density" },
-    "/ch/2": { "name": "radial", "role": "radial field weight" },
-    "/ch/3": { "name": "orbital", "role": "orbital / swirl field weight" },
-    "/ch/4": { "name": "vertical", "role": "vertical lift / bend field weight" },
-    "/ch/5": { "name": "turbulence", "role": "turbulence / perturbation field weight" },
-    "/ch/6": { "name": "shell", "role": "shell / horizon pressure field weight" },
-    "/ch/7": { "name": "raw_aux", "role": "reserved raw modulation" },
-    "/ch/8": { "name": "scene", "role": "scene / preset modulation" }
+    "/ch/1": "probability",
+    "/ch/2": "radial",
+    "/ch/3": "orbital",
+    "/ch/4": "vertical",
+    "/ch/5": "turbulence",
+    "/ch/6": "shell",
+    "/ch/7": "color",
+    "/ch/8": "scene",
+    "/ch/9": "particle_speed",
+    "/ch/10": "particle_mass",
+    "/ch/11": "aux_11",
+    "/ch/12": "aux_12",
+    "/ch/13": "aux_13",
+    "/ch/14": "aux_14",
+    "/ch/15": "aux_15",
+    "/ch/16": "aux_16",
+    "/ch/17": "aux_17",
+    "/ch/18": "aux_18",
+    "/ch/19": "aux_19",
+    "/ch/20": "aux_20",
+    "/ch/21": "aux_21",
+    "/ch/22": "aux_22",
+    "/ch/23": "aux_23",
+    "/ch/24": "aux_24",
+    "/ch/25": "aux_25",
+    "/ch/26": "aux_26",
+    "/ch/27": "aux_27",
+    "/ch/28": "aux_28",
+    "/ch/29": "aux_29",
+    "/ch/30": "aux_30",
+    "/ch/31": "aux_31",
+    "/ch/32": "aux_32"
+  },
+  "profile_system": "removed",
+  "native_channels": {
+    "/ch/1": "probability",
+    "/ch/2": "radial",
+    "/ch/3": "orbital",
+    "/ch/4": "vertical",
+    "/ch/5": "turbulence",
+    "/ch/6": "shell",
+    "/ch/7": "color",
+    "/ch/8": "scene",
+    "/ch/9": "particle_speed",
+    "/ch/10": "particle_mass",
+    "/ch/11": "aux_11",
+    "/ch/12": "aux_12",
+    "/ch/13": "aux_13",
+    "/ch/14": "aux_14",
+    "/ch/15": "aux_15",
+    "/ch/16": "aux_16",
+    "/ch/17": "aux_17",
+    "/ch/18": "aux_18",
+    "/ch/19": "aux_19",
+    "/ch/20": "aux_20",
+    "/ch/21": "aux_21",
+    "/ch/22": "aux_22",
+    "/ch/23": "aux_23",
+    "/ch/24": "aux_24",
+    "/ch/25": "aux_25",
+    "/ch/26": "aux_26",
+    "/ch/27": "aux_27",
+    "/ch/28": "aux_28",
+    "/ch/29": "aux_29",
+    "/ch/30": "aux_30",
+    "/ch/31": "aux_31",
+    "/ch/32": "aux_32"
+  },
+  "targets": {
+    "/ch/1": "probability_value",
+    "/ch/2": "field_layer_weights[0]",
+    "/ch/3": "field_layer_weights[1]",
+    "/ch/4": "field_layer_weights[2]",
+    "/ch/5": "field_layer_weights[3]",
+    "/ch/6": "field_layer_weights[4]",
+    "/ch/7": "color_mode",
+    "/ch/8": "scene_index",
+    "/ch/9": "particle_speed",
+    "/ch/10": "particle_mass",
+    "/ch/11": "aux_11",
+    "/ch/12": "aux_12",
+    "/ch/13": "aux_13",
+    "/ch/14": "aux_14",
+    "/ch/15": "aux_15",
+    "/ch/16": "aux_16",
+    "/ch/17": "aux_17",
+    "/ch/18": "aux_18",
+    "/ch/19": "aux_19",
+    "/ch/20": "aux_20",
+    "/ch/21": "aux_21",
+    "/ch/22": "aux_22",
+    "/ch/23": "aux_23",
+    "/ch/24": "aux_24",
+    "/ch/25": "aux_25",
+    "/ch/26": "aux_26",
+    "/ch/27": "aux_27",
+    "/ch/28": "aux_28",
+    "/ch/29": "aux_29",
+    "/ch/30": "aux_30",
+    "/ch/31": "aux_31",
+    "/ch/32": "aux_32"
+  },
+  "safe_clamps": {
+    "probability_value": [
+      0.0,
+      1.0
+    ],
+    "field_layer_weights": [
+      0.0,
+      3.0
+    ],
+    "color_mode": [
+      0,
+      4
+    ],
+    "scene_index": [
+      1,
+      6
+    ],
+    "particle_speed": [
+      -3.0,
+      3.0
+    ],
+    "particle_mass": [
+      0.2,
+      5.0
+    ]
+  },
+  "bipolar_channels": {
+    "/ch/9": {
+      "name": "particle_speed",
+      "input_voltage": [
+        -5.0,
+        5.0
+      ],
+      "mapped_range": [
+        -3.0,
+        3.0
+      ],
+      "description": "Lorenz/VCV bipolar speed scalar. Negative reverses acceleration response."
+    },
+    "/ch/10": {
+      "name": "particle_mass",
+      "input_voltage": [
+        -5.0,
+        5.0
+      ],
+      "mapped_range": [
+        0.2,
+        5.0
+      ],
+      "description": "Lorenz/VCV bipolar mass/inertia control. Negative voltage is light, positive is heavy."
+    }
   }
 }

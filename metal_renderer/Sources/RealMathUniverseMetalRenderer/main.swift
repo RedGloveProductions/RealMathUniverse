@@ -1,9 +1,22 @@
 import AppKit
 import Foundation
+import Darwin
+// v1.3D6 duplicate runtime helper cleanup applied
 import ImageIO
 import Metal
 import MetalKit
 import simd
+
+
+// RMU v1.3A1 geospatial runtime globals
+// These are renderer-level runtime latches used by the geospatial crab-field startup path.
+// They are file-scope on purpose so older renderer methods and extension-style patches can share the same state.
+var runtimeMode: String = "geospatial_crab_field"
+var geospatialEnabled: Bool = true
+var simulationPaused: Bool = true
+var lastGeospatialSpaceToggleUnix: Double = 0.0
+var lastSpacebarToggleUnix: TimeInterval = 0.0
+
 
 struct Particle {
     var position: SIMD3<Float>
@@ -105,17 +118,28 @@ final class ParticleFrameLoader {
     }
 }
 
-final class HUDOverlayController {
+final class HUDOverlayController: NSObject {
     let containerView: NSView
     let frameLoader: ParticleFrameLoader
     weak var renderer: MetalRenderer?
 
+    let topPanel = NSVisualEffectView()
     let statsPanel = NSVisualEffectView()
     let controlsPanel = NSVisualEffectView()
     let fieldPanel = NSVisualEffectView()
+    let microNavPanel = NSVisualEffectView()
+    let depthPanel = NSVisualEffectView()
+    let commandPanel = NSVisualEffectView()
+
+    let topText = NSTextField(labelWithString: "")
     let statsText = NSTextField(labelWithString: "")
     let controlsText = NSTextField(labelWithString: "")
     let fieldText = NSTextField(labelWithString: "")
+    let microNavText = NSTextField(labelWithString: "")
+    let depthText = NSTextField(labelWithString: "")
+    let commandText = NSTextField(labelWithString: "")
+
+    var navButtons: [NSButton] = []
 
     var overlaysVisible = true
     var statsVisible = true
@@ -123,28 +147,82 @@ final class HUDOverlayController {
     var fieldPanelVisible = true
     var compactMode = false
 
+    let pages = ["HOME", "DATA", "FIELD", "COUPLING", "VCV", "NAV", "CAPTURE", "ALERTS"]
+    var activePage = "HOME"
+
+    var bottomPanelMode: String {
+        return activePage.lowercased()
+    }
+
     init(containerView: NSView, frameLoader: ParticleFrameLoader, renderer: MetalRenderer) {
         self.containerView = containerView
         self.frameLoader = frameLoader
         self.renderer = renderer
+        super.init()
         buildPanels()
         updateLayout()
         updateText()
     }
 
     func buildPanels() {
-        configure(panel: statsPanel)
-        configure(panel: controlsPanel)
-        configure(panel: fieldPanel)
-        configureLabel(statsText)
-        configureLabel(controlsText)
-        configureLabel(fieldText)
+        [topPanel, statsPanel, controlsPanel, fieldPanel, microNavPanel, depthPanel, commandPanel].forEach { configure(panel: $0) }
+        [topText, statsText, controlsText, fieldText, microNavText, depthText, commandText].forEach { configureLabel($0) }
+
+        topPanel.addSubview(topText)
         statsPanel.addSubview(statsText)
         controlsPanel.addSubview(controlsText)
         fieldPanel.addSubview(fieldText)
+        microNavPanel.addSubview(microNavText)
+        depthPanel.addSubview(depthText)
+        commandPanel.addSubview(commandText)
+
+        buildNavButtons()
+
+        containerView.addSubview(topPanel)
         containerView.addSubview(statsPanel)
         containerView.addSubview(controlsPanel)
         containerView.addSubview(fieldPanel)
+        containerView.addSubview(microNavPanel)
+        containerView.addSubview(depthPanel)
+        containerView.addSubview(commandPanel)
+    }
+
+    func buildNavButtons() {
+        // v1.2B3: text-first tactical tiles.
+        // Avoid Unicode icon glyphs here because the active macOS fallback font can
+        // render them as random symbols/boxes on some machines.  These labels are
+        // deliberately explicit, operator-readable, and MFD-style.
+        let labels = [
+            "HOME\nOVERVIEW",
+            "DATA\nDATASET",
+            "FIELD\nLAYERS",
+            "COUPLING\nDRIVE",
+            "VCV\nOSC",
+            "NAV\nPOSITION",
+            "CAPTURE\nOUTPUT",
+            "ALERTS\nSTATUS"
+        ]
+        for i in 0..<labels.count {
+            let b = NSButton(title: labels[i], target: self, action: #selector(navButtonClicked(_:)))
+            b.tag = i
+            b.bezelStyle = .rounded
+            b.isBordered = true
+            b.font = monoFont(size: 12, weight: .medium)
+            b.alignment = .center
+            b.wantsLayer = true
+            b.layer?.cornerRadius = 9
+            b.layer?.borderWidth = 1
+            b.layer?.masksToBounds = true
+            navButtons.append(b)
+            controlsPanel.addSubview(b)
+        }
+    }
+
+    @objc func navButtonClicked(_ sender: NSButton) {
+        let idx = max(0, min(sender.tag, pages.count - 1))
+        activePage = pages[idx]
+        print("RMU console page -> \(activePage)")
+        updateText()
     }
 
     func configure(panel: NSVisualEffectView) {
@@ -152,13 +230,16 @@ final class HUDOverlayController {
         panel.blendingMode = .withinWindow
         panel.state = .active
         panel.wantsLayer = true
-        panel.layer?.cornerRadius = 14
+        panel.layer?.cornerRadius = 10
         panel.layer?.masksToBounds = true
+        panel.layer?.borderWidth = 1
+        panel.layer?.borderColor = NSColor(calibratedRed: 0.18, green: 0.32, blue: 0.42, alpha: 0.75).cgColor
+        panel.layer?.backgroundColor = NSColor(calibratedRed: 0.015, green: 0.035, blue: 0.055, alpha: 0.34).cgColor
     }
 
     func configureLabel(_ label: NSTextField) {
-        label.font = NSFont.monospacedSystemFont(ofSize: 13, weight: .regular)
-        label.textColor = NSColor(calibratedWhite: 0.92, alpha: 1.0)
+        label.font = monoFont(size: 12, weight: .regular)
+        label.textColor = rmuText()
         label.backgroundColor = .clear
         label.isBordered = false
         label.isEditable = false
@@ -167,195 +248,561 @@ final class HUDOverlayController {
         label.maximumNumberOfLines = 0
     }
 
-    func updateLayout() {
-        let bounds = containerView.bounds
-        let margin: CGFloat = 18
-        let top: CGFloat = 18
-
-        if compactMode {
-            statsPanel.frame = NSRect(x: margin, y: bounds.height - top - 140, width: 420, height: 140)
-            controlsPanel.frame = NSRect(x: bounds.width - margin - 430, y: bounds.height - top - 170, width: 430, height: 170)
-            fieldPanel.frame = NSRect(x: bounds.midX - 310, y: margin, width: 620, height: 116)
-        } else {
-            statsPanel.frame = NSRect(x: margin, y: bounds.height - top - 430, width: 455, height: 430)
-            controlsPanel.frame = NSRect(x: bounds.width - margin - 610, y: bounds.height - top - 520, width: 610, height: 520)
-            fieldPanel.frame = NSRect(x: bounds.midX - 420, y: margin, width: 840, height: 156)
-        }
-
-        let inset: CGFloat = 14
-        statsText.frame = statsPanel.bounds.insetBy(dx: inset, dy: inset)
-        controlsText.frame = controlsPanel.bounds.insetBy(dx: inset, dy: inset)
-        fieldText.frame = fieldPanel.bounds.insetBy(dx: inset, dy: inset)
+    func monoFont(size: CGFloat, weight: NSFont.Weight = .regular) -> NSFont {
+        return NSFont(name: "IBM Plex Mono", size: size) ?? NSFont.monospacedSystemFont(ofSize: size, weight: weight)
     }
 
-    func updateText() {
-        guard let renderer = renderer else { return }
-        let dataAge = Date().timeIntervalSince1970 - frameLoader.lastMetadataUnix
-        let fileStatus = frameLoader.metadataLoaded ? "LIVE" : "WAITING"
-        let displayRadius = renderer.manualWorldRadius ?? frameLoader.worldRadius
+    func titleFont(size: CGFloat) -> NSFont {
+        return NSFont(name: "Cinzel", size: size) ?? NSFont(name: "Times New Roman", size: size) ?? NSFont.systemFont(ofSize: size, weight: .semibold)
+    }
 
-        let selected = renderer.selectedFieldLayerName.uppercased()
-        let selectedEnabled = renderer.fieldLayerEnabled[renderer.selectedFieldLayerIndex] ? "ON" : "OFF"
-        let systemState = renderer.fieldLayersEnabled ? "ON" : "OFF"
-        fieldText.stringValue = """
-        FIELD LAYERS: \(systemState)        SELECTED: \(selected)        SELECTED ENABLED: \(selectedEnabled)        WEIGHT: \(String(format: "%.2f", renderer.selectedFieldLayerWeight))
-        VCV: \(renderer.vcvDisplayStatus())        FIELD CTRL: \(renderer.vcvFieldControlEnabled ? "ON" : "OFF")        SAFE: \(renderer.vcvSafeModeEnabled ? "ON" : "OFF")        SMOOTH: \(String(format: "%.2f", renderer.vcvSmoothingAmount))
-        \(renderer.vcvMonitorVisible ? renderer.vcvChannelCompactSummary() : "OSC MONITOR: hidden")
-        CLAMP: \(renderer.vcvLastClampEvent)
-        RECIPE: \(renderer.fieldLayerSummary())
-        CONTROLS: F fields   TAB select   SPACE on/off   / \\ weight   SHIFT+V VCV   SHIFT+O OSC   SHIFT+C safe mode
-        """
+    func rmuText() -> NSColor { NSColor(calibratedRed: 0.88, green: 0.93, blue: 0.96, alpha: 1.0) }
+    func rmuDim() -> NSColor { NSColor(calibratedRed: 0.58, green: 0.68, blue: 0.75, alpha: 1.0) }
+    func rmuCyan() -> NSColor { NSColor(calibratedRed: 0.31, green: 0.76, blue: 0.97, alpha: 1.0) }
+    func rmuTeal() -> NSColor { NSColor(calibratedRed: 0.24, green: 0.84, blue: 0.78, alpha: 1.0) }
+    func rmuAmber() -> NSColor { NSColor(calibratedRed: 1.00, green: 0.74, blue: 0.22, alpha: 1.0) }
+    func rmuGreen() -> NSColor { NSColor(calibratedRed: 0.49, green: 1.00, blue: 0.54, alpha: 1.0) }
+    func rmuYellow() -> NSColor { NSColor(calibratedRed: 1.00, green: 0.84, blue: 0.35, alpha: 1.0) }
+    func rmuRed() -> NSColor { NSColor(calibratedRed: 1.00, green: 0.34, blue: 0.34, alpha: 1.0) }
+
+    func updateLayout() {
+        let bounds = containerView.bounds
+        let margin: CGFloat = 10
+        let topH: CGFloat = compactMode ? 34 : 42
+        let bottomH: CGFloat = compactMode ? 130 : 218
+        let leftW: CGFloat = compactMode ? 270 : 335
+        let rightW: CGFloat = compactMode ? 260 : 305
+        let microH: CGFloat = compactMode ? 0 : 125
+        let commandH: CGFloat = compactMode ? 0 : 50
+
+        topPanel.frame = NSRect(x: margin, y: bounds.height - margin - topH, width: bounds.width - margin * 2, height: topH)
+
+        let sideTopY = bounds.height - margin - topH - margin
+        let leftAvailableH = sideTopY - bottomH - commandH - margin * 3
+        let mainLeftHeight = max(compactMode ? 150 : 300, leftAvailableH - microH - margin)
+        statsPanel.frame = NSRect(x: margin, y: bottomH + commandH + margin * 3 + microH, width: leftW, height: mainLeftHeight)
 
         if compactMode {
-            statsText.stringValue = """
-            RMU v0.9B | \(fileStatus) | \(String(format: "%.1f", renderer.currentFPS)) fps
-            frame \(String(format: "%.2f", renderer.currentFrameTimeMS)) ms | late \(renderer.lateFrameWarning)
-            \(frameLoader.behaviorMode) | \(renderer.colorModeName)
-            points \(frameLoader.latestPointCount) / source \(frameLoader.sourceParticleCount)
-            sim \(String(format: "%.1f", frameLoader.latestSimTime)) | radius \(String(format: "%.2f", displayRadius))
-            trails \(renderer.trailsEnabled) len \(renderer.trailLength)
-            FIELD SYSTEM: \(renderer.fieldLayersEnabled ? "ON" : "OFF")
-            SELECTED: \(renderer.selectedFieldLayerName.uppercased()) weight \(String(format: "%.2f", renderer.selectedFieldLayerWeight)) enabled \(renderer.fieldLayerEnabled[renderer.selectedFieldLayerIndex])
-            AUTO CAMERA: \(renderer.autoCameraEnabled ? "ON" : "OFF") | STATE: \(renderer.activeVisualStateName)
-            SCENE: \(renderer.activeScenePresetName)
-            VCV: \(renderer.vcvDisplayStatus()) | FIELD CTRL: \(renderer.vcvFieldControlEnabled ? "ON" : "OFF") | PROB: \(renderer.probabilitySource)
-            \(renderer.vcvMonitorVisible ? renderer.vcvChannelCompactSummary() : "OSC MONITOR: hidden")
-            RECIPE: \(renderer.fieldLayerSummary())
-            """
-
-            controlsText.stringValue = """
-            S shot  J clean  K burst  L clean burst
-            Y presentation  H hud  G grid  O rings
-            F fields  TAB select  SPACE on/off
-            / \\ field weight  SHIFT+V VCV  SHIFT+O OSC
-            SHIFT+C safe mode  OPT+SHIFT+1-8 ch enable
-            M compact  C color
-            ;/' burst count  U/I interval
-            8/9/0 samples 25/50/100k  X reset
-            ESC quit
-            """
-            return
+            microNavPanel.frame = .zero
+            depthPanel.frame = .zero
+            commandPanel.frame = .zero
+        } else {
+            microNavPanel.frame = NSRect(x: margin, y: bottomH + commandH + margin * 2, width: (leftW - margin) / 2, height: microH)
+            depthPanel.frame = NSRect(x: margin + (leftW - margin) / 2 + margin, y: bottomH + commandH + margin * 2, width: (leftW - margin) / 2, height: microH)
+            commandPanel.frame = NSRect(x: margin, y: margin, width: bounds.width - margin * 2, height: commandH)
         }
 
-        statsText.stringValue = """
-        REALMATHUNIVERSE v0.9B
-        status: \(fileStatus)
-        renderer fps: \(String(format: "%.1f", renderer.currentFPS))
-        frame time ms: \(String(format: "%.2f", renderer.currentFrameTimeMS))
-        late frame warning: \(renderer.lateFrameWarning)
-        renderer frame: \(renderer.frameIndex)
-        point count: \(frameLoader.latestPointCount)
-        source particles: \(frameLoader.sourceParticleCount)
-        sim frame: \(frameLoader.latestFrameIndex)
-        sim time: \(String(format: "%.2f", frameLoader.latestSimTime))
-        profile: \(frameLoader.latestProfile)
-        backend: \(frameLoader.latestComputeBackend)
-        behavior: \(frameLoader.behaviorMode)
-        respawn: \(frameLoader.respawnOnCapture)
-        color mode: \(renderer.colorModeName)
-        rotation: \(String(format: "%.1f", renderer.rotationRadians * 180.0 / .pi))°
-        pan: \(String(format: "%.2f", renderer.panX)), \(String(format: "%.2f", renderer.panY))
-        world radius: \(String(format: "%.2f", frameLoader.worldRadius))
-        display radius: \(String(format: "%.2f", displayRadius))
-        point size: \(String(format: "%.1f", renderer.pointSize))
-        trails: \(renderer.trailsEnabled) length \(renderer.trailLength)
-        grid: \(renderer.gridEnabled)
-        center marker: \(renderer.centerMarkerEnabled)
-        horizon ring: \(renderer.horizonRingEnabled)
-        curvature overlay: \(renderer.curvatureOverlayEnabled)
-        probability overlay: \(renderer.probabilityOverlayEnabled)
-        presentation mode: \(renderer.presentationModeEnabled)
-        FIELD SYSTEM: \(renderer.fieldLayersEnabled ? "ON" : "OFF")
-        SELECTED FIELD: \(renderer.selectedFieldLayerName.uppercased())
-        SELECTED WEIGHT: \(String(format: "%.2f", renderer.selectedFieldLayerWeight))
-        SELECTED ENABLED: \(renderer.fieldLayerEnabled[renderer.selectedFieldLayerIndex])
-        FIELD RECIPE: \(renderer.fieldLayerSummary())
-        AUTO CAMERA: \(renderer.autoCameraEnabled ? "ON" : "OFF")
-        ACTIVE STATE: \(renderer.activeVisualStateName)
-        ACTIVE SCENE: \(renderer.activeScenePresetName)
-        VCV STATUS: \(renderer.vcvStatus)
-        PROBABILITY SOURCE: \(renderer.probabilitySource)
-        VCV FIELD CONTROL: \(renderer.vcvFieldControlEnabled)
-        VCV VALUES: \(renderer.vcvLastValues)
-        VCV CHANNELS: \(renderer.vcvChannelCompactSummary())
-        VCV ENABLED: \(renderer.vcvChannelEnableSummary())
-        VCV SAFE MODE: \(renderer.vcvSafeModeEnabled)
-        VCV LAST CLAMP: \(renderer.vcvLastClampEvent)
-        LAST STATE MSG: \(renderer.lastVisualStateMessage)
-        sample request: \(frameLoader.renderSampleCount)
-        metadata: \(frameLoader.metadataVersion)
-        metadata age: \(String(format: "%.2f", dataAge))s
-        """
+        controlsPanel.frame = NSRect(x: bounds.width - margin - rightW, y: bottomH + commandH + margin * 2, width: rightW, height: sideTopY - bottomH - commandH - margin * 2)
+        fieldPanel.frame = NSRect(x: leftW + margin * 2, y: commandH + margin * 2, width: bounds.width - leftW - rightW - margin * 4, height: bottomH)
 
-        controlsText.stringValue = """
-        CONTROLS
+        let inset: CGFloat = compactMode ? 10 : 14
+        topText.frame = topPanel.bounds.insetBy(dx: inset, dy: 7)
+        statsText.frame = statsPanel.bounds.insetBy(dx: inset, dy: inset)
+        fieldText.frame = fieldPanel.bounds.insetBy(dx: inset, dy: inset)
+        microNavText.frame = microNavPanel.bounds.insetBy(dx: 10, dy: 10)
+        depthText.frame = depthPanel.bounds.insetBy(dx: 10, dy: 10)
+        commandText.frame = commandPanel.bounds.insetBy(dx: 12, dy: 9)
 
-        S       save screenshot
-        J       save clean screenshot
-        K       screenshot burst
-        L       clean screenshot burst
-        burst   count/interval adjusted with ;/' and U/I
-        T       toggle always-on-top
-        H       show/hide all HUD overlays
-        Y       toggle presentation mode
-        M       compact HUD mode
-        ; / '   decrease / increase burst count
-        U / I   decrease / increase burst interval
-        1 / 2   stats / controls overlay
+        layoutNavButtonsAndDetail(inset: inset)
+    }
 
-        3       preset: stable orbit cloud
-        4       preset: black hole capture
-        5       preset: accretion disk
-        6       preset: field pressure bounce
-        7       preset: infinite collapse
-        R       toggle respawn on capture
-
-        8       sample preset 25k
-        9       sample preset 50k
-        0       sample preset 100k
-
-        P       toggle trails
-        , / .   decrease / increase trail length
-        N       clear trails
-
-        F       toggle field layers
-        TAB     select next field layer
-        SPACE   toggle selected field layer
-        /       decrease selected field weight
-        \\      increase selected field weight
-        SHIFT+V toggle VCV field control
-        SHIFT+O toggle OSC monitor in HUD
-        SHIFT+C toggle VCV safe mode/clamp
-        OPT+SHIFT+1-8 toggle VCV channel enable
-
-        G       toggle grid + probability halo
-        O       toggle center marker + horizon + curvature rings
-        C       cycle color mode
-        V       classic white mode
-        B       behavior color mode
-
-        arrows  pan camera
-        A / D   rotate camera
-        W / Z   zoom in / out
-        Q / E   fine zoom
-        X       reset camera
-        + / -   point size
-        [ / ]   display radius zoom
-        ESC     quit renderer
-        """
+    func layoutNavButtonsAndDetail(inset: CGFloat) {
+        let cols = 2
+        let spacing: CGFloat = 7
+        let buttonH: CGFloat = compactMode ? 46 : 72
+        let usableW = controlsPanel.bounds.width - inset * 2
+        let buttonW = (usableW - spacing) / 2
+        let topY = controlsPanel.bounds.height - inset - buttonH
+        for i in 0..<navButtons.count {
+            let row = i / cols
+            let col = i % cols
+            let x = inset + CGFloat(col) * (buttonW + spacing)
+            let y = topY - CGFloat(row) * (buttonH + spacing)
+            navButtons[i].frame = NSRect(x: x, y: y, width: buttonW, height: buttonH)
+        }
+        let buttonRows = CGFloat((navButtons.count + 1) / 2)
+        let detailTop = topY - buttonRows * (buttonH + spacing) - 8
+        controlsText.frame = NSRect(x: inset, y: inset, width: usableW, height: max(60, detailTop - inset))
     }
 
     func applyVisibility() {
+        topPanel.isHidden = !overlaysVisible
         statsPanel.isHidden = !(overlaysVisible && statsVisible)
         controlsPanel.isHidden = !(overlaysVisible && controlsVisible)
         fieldPanel.isHidden = !(overlaysVisible && fieldPanelVisible)
+        microNavPanel.isHidden = !(overlaysVisible && statsVisible) || compactMode
+        depthPanel.isHidden = !(overlaysVisible && statsVisible) || compactMode
+        commandPanel.isHidden = !overlaysVisible || compactMode
     }
 
     func toggleAll() { overlaysVisible.toggle(); applyVisibility() }
     func toggleStats() { statsVisible.toggle(); applyVisibility() }
     func toggleControls() { controlsVisible.toggle(); applyVisibility() }
-    func toggleCompact() { compactMode.toggle(); updateLayout(); updateText() }
+    func toggleCompact() { compactMode.toggle(); updateLayout(); applyVisibility(); updateText() }
+
+    func toggleBottomPanelMode() {
+        let idx = pages.firstIndex(of: activePage) ?? 0
+        activePage = pages[(idx + 1) % pages.count]
+        print("RMU console page -> \(activePage)")
+        updateText()
+    }
+
+    func setPage(_ page: String) {
+        if pages.contains(page) { activePage = page }
+        updateText()
+    }
+
+    func numberString(_ value: Any?, digits: Int = 3) -> String {
+        if let n = value as? NSNumber { return String(format: "%.*f", digits, n.doubleValue) }
+        if let d = value as? Double { return String(format: "%.*f", digits, d) }
+        if let f = value as? Float { return String(format: "%.*f", digits, Double(f)) }
+        if let i = value as? Int { return "\(i)" }
+        return "n/a"
+    }
+
+    func sciString(_ value: Any?, digits: Int = 3) -> String {
+        if let n = value as? NSNumber { return String(format: "%.*e", digits, n.doubleValue) }
+        if let d = value as? Double { return String(format: "%.*e", digits, d) }
+        if let f = value as? Float { return String(format: "%.*e", digits, Double(f)) }
+        if let i = value as? Int { return "\(i)" }
+        return "n/a"
+    }
+
+    func stringValue(_ value: Any?) -> String {
+        if let s = value as? String { return s }
+        if let b = value as? Bool { return b ? "true" : "false" }
+        if let n = value as? NSNumber { return "\(n)" }
+        return "n/a"
+    }
+
+    func boolValue(_ value: Any?) -> Bool {
+        if let b = value as? Bool { return b }
+        if let n = value as? NSNumber { return n.boolValue }
+        if let s = value as? String { return ["true", "yes", "1", "on"].contains(s.lowercased()) }
+        return false
+    }
+
+    func readJSON(pathParts: [String]) -> [String: Any]? {
+        guard let root = renderer?.projectRoot else { return nil }
+        var url = URL(fileURLWithPath: root)
+        for p in pathParts { url.appendPathComponent(p) }
+        guard let data = try? Data(contentsOf: url),
+              let object = try? JSONSerialization.jsonObject(with: data, options: []),
+              let json = object as? [String: Any] else { return nil }
+        return json
+    }
+
+    func readDatasetState() -> [String: Any]? { readJSON(pathParts: ["output", "dataset_state.json"]) }
+    func readCouplingState() -> [String: Any]? { readJSON(pathParts: ["output", "dataset_coupling_state.json"]) }
+    func readRuntimeState() -> [String: Any]? { readJSON(pathParts: ["output", "runtime_state.json"]) }
+
+    func runtimeStatusLabel() -> String {
+        if !frameLoader.metadataLoaded { return "WAITING" }
+        let rt = readRuntimeState()
+        let armed = boolValue(rt?["physics_armed"])
+        let paused = boolValue(rt?["simulation_paused"])
+        if armed { return "ARMED" }
+        if paused { return "PAUSED" }
+        return "LIVE"
+    }
+
+    func runtimeModeLabel() -> String {
+        let s = stringValue(readRuntimeState()?["runtime_mode"])
+        return s == "n/a" ? "unknown" : s
+    }
+
+    func runtimeBehaviorLabel() -> String {
+        let s = stringValue(readRuntimeState()?["behavior_mode"])
+        return s == "n/a" ? frameLoader.behaviorMode : s
+    }
+
+    func runtimeArmedLabel() -> String {
+        boolValue(readRuntimeState()?["physics_armed"]) ? "TRUE" : "FALSE"
+    }
+
+
+    func healthColor(label: String, value: Double) -> NSColor {
+        let l = label.lowercased()
+        if l.contains("fps") {
+            if value >= 55 { return rmuGreen() }
+            if value >= 40 { return rmuYellow() }
+            return rmuRed()
+        }
+        if l.contains("frame") && l.contains("ms") {
+            if value <= 16.7 { return rmuGreen() }
+            if value <= 30.0 { return rmuYellow() }
+            return rmuRed()
+        }
+        if l.contains("fallback") { return value == 0 ? rmuGreen() : rmuRed() }
+        if l.contains("probability") {
+            if value >= 0.15 && value <= 0.85 { return rmuGreen() }
+            if value > 0.05 && value < 0.95 { return rmuYellow() }
+            return rmuRed()
+        }
+        if l.contains("curvature") {
+            if value <= 0.65 { return rmuGreen() }
+            if value <= 0.90 { return rmuYellow() }
+            return rmuRed()
+        }
+        if l.contains("temperature") || l.contains("temp") {
+            if value <= 0.70 { return rmuGreen() }
+            if value <= 0.88 { return rmuYellow() }
+            return rmuRed()
+        }
+        if l.contains("higgs") {
+            if value <= 0.70 { return rmuGreen() }
+            if value <= 0.90 { return rmuYellow() }
+            return rmuRed()
+        }
+        if l.contains("latency") {
+            if value <= 90 { return rmuGreen() }
+            if value <= 250 { return rmuYellow() }
+            return rmuRed()
+        }
+        return rmuCyan()
+    }
+
+    func statusColor(_ text: String) -> NSColor {
+        let s = text.lowercased()
+        if s.contains("false") || s.contains("ok") || s.contains("live") || s.contains("active") || s.contains("armed") || s.contains("running") || s.contains("true") || s.contains("on") || s.contains("nominal") { return rmuGreen() }
+        if s.contains("paused") || s.contains("stale") || s.contains("waiting") || s.contains("moderate") || s.contains("warning") { return rmuYellow() }
+        if s.contains("fallback") || s.contains("missing") || s.contains("error") || s.contains("bad") || s.contains("off") || s.contains("failed") { return rmuRed() }
+        return rmuText()
+    }
+
+    func append(_ attr: NSMutableAttributedString, _ text: String, color: NSColor? = nil, font: NSFont? = nil) {
+        let attrs: [NSAttributedString.Key: Any] = [
+            .font: font ?? monoFont(size: 12),
+            .foregroundColor: color ?? rmuText()
+        ]
+        attr.append(NSAttributedString(string: text, attributes: attrs))
+    }
+
+    func appendKV(_ attr: NSMutableAttributedString, _ key: String, _ value: String, valueColor: NSColor? = nil, unit: String = "") {
+        let label = key.padding(toLength: 18, withPad: " ", startingAt: 0)
+        append(attr, label, color: rmuDim())
+        append(attr, value, color: valueColor ?? rmuCyan())
+        if !unit.isEmpty { append(attr, " \(unit)", color: rmuDim()) }
+        append(attr, "\n", color: rmuText())
+    }
+
+    func sectionTitle(_ title: String) -> String { "▸ \(title)\n" }
+
+    func updateNavButtonStyles() {
+        for (i, button) in navButtons.enumerated() {
+            let selected = pages[i] == activePage
+            button.contentTintColor = selected ? rmuAmber() : rmuText()
+            button.layer?.borderColor = (selected ? rmuAmber() : NSColor(calibratedRed: 0.20, green: 0.34, blue: 0.43, alpha: 0.90)).cgColor
+            button.layer?.backgroundColor = (selected ? NSColor(calibratedRed: 0.18, green: 0.12, blue: 0.02, alpha: 0.44) : NSColor(calibratedRed: 0.02, green: 0.05, blue: 0.075, alpha: 0.30)).cgColor
+        }
+    }
+
+    func updateText() {
+        guard let renderer = renderer else { return }
+        updateNavButtonStyles()
+
+        let now = Date()
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+        formatter.timeZone = TimeZone(abbreviation: "UTC")
+        let utc = formatter.string(from: now)
+        let fileStatus = runtimeStatusLabel()
+        let alertCount = activeAlertCount(renderer: renderer)
+        let dataset = readDatasetState()
+        let coupling = readCouplingState()
+        let datasetLoaded = boolValue(dataset?["loaded"])
+        let datasetFallback = boolValue(dataset?["fallback_active"])
+        let couplingEnabled = boolValue(coupling?["enabled"]) || renderer.dataCouplingEnabled
+
+        topText.attributedStringValue = topStatusAttributed(
+            utc: utc,
+            fileStatus: fileStatus,
+            datasetLoaded: datasetLoaded,
+            datasetFallback: datasetFallback,
+            couplingEnabled: couplingEnabled,
+            alertCount: alertCount,
+            renderer: renderer
+        )
+
+        statsText.attributedStringValue = leftTelemetryAttributed(renderer: renderer, dataset: dataset, coupling: coupling)
+        controlsText.attributedStringValue = rightControlAttributed(renderer: renderer, dataset: dataset, coupling: coupling)
+        fieldText.attributedStringValue = bottomConsoleAttributed(renderer: renderer, dataset: dataset, coupling: coupling)
+        microNavText.attributedStringValue = microNavAttributed(renderer: renderer, dataset: dataset)
+        depthText.attributedStringValue = depthGaugeAttributed(renderer: renderer, dataset: dataset)
+        commandText.attributedStringValue = commandBarAttributed(renderer: renderer)
+    }
+
+    func topStatusAttributed(utc: String, fileStatus: String, datasetLoaded: Bool, datasetFallback: Bool, couplingEnabled: Bool, alertCount: Int, renderer: MetalRenderer) -> NSAttributedString {
+        let a = NSMutableAttributedString()
+        append(a, " UTC \(utc)   ", color: rmuDim(), font: monoFont(size: 12))
+        append(a, "RUN RMU-1.3F6   ", color: rmuCyan(), font: monoFont(size: 12))
+        append(a, fileStatus, color: statusColor(fileStatus), font: monoFont(size: 12, weight: .semibold))
+        append(a, "      RMU TACTICAL RESEARCH CONSOLE      ", color: rmuText(), font: titleFont(size: 22))
+        append(a, "DATA ", color: rmuDim(), font: monoFont(size: 12))
+        append(a, datasetLoaded && !datasetFallback ? "ON" : (datasetFallback ? "FALLBACK" : "OFF"), color: datasetLoaded && !datasetFallback ? rmuGreen() : rmuRed(), font: monoFont(size: 12, weight: .semibold))
+        append(a, "  VCV ", color: rmuDim(), font: monoFont(size: 12))
+        append(a, renderer.vcvDisplayStatus(), color: statusColor(renderer.vcvDisplayStatus()), font: monoFont(size: 12, weight: .semibold))
+        append(a, "  COUPLING ", color: rmuDim(), font: monoFont(size: 12))
+        append(a, couplingEnabled ? "ON" : "OFF", color: couplingEnabled ? rmuGreen() : rmuYellow(), font: monoFont(size: 12, weight: .semibold))
+        append(a, "  ALERTS \(alertCount)", color: alertCount == 0 ? rmuGreen() : (alertCount < 3 ? rmuYellow() : rmuRed()), font: monoFont(size: 12, weight: .semibold))
+        return a
+    }
+
+    func activeAlertCount(renderer: MetalRenderer) -> Int {
+        var c = 0
+        if renderer.lateFrameWarning { c += 1 }
+        if renderer.vcvDisplayStatus().lowercased().contains("stale") { c += 1 }
+        if let dataset = readDatasetState(), boolValue(dataset["fallback_active"]) { c += 1 }
+        return c
+    }
+
+    func leftTelemetryAttributed(renderer: MetalRenderer, dataset: [String: Any]?, coupling: [String: Any]?) -> NSAttributedString {
+        let a = NSMutableAttributedString()
+        append(a, sectionTitle("SYSTEM"), color: rmuCyan(), font: monoFont(size: 13, weight: .semibold))
+        appendKV(a, "status", runtimeStatusLabel(), valueColor: statusColor(runtimeStatusLabel()))
+        appendKV(a, "backend", frameLoader.latestComputeBackend)
+        appendKV(a, "fps", String(format: "%.1f", renderer.currentFPS), valueColor: healthColor(label: "fps", value: renderer.currentFPS))
+        appendKV(a, "frame ms", String(format: "%.2f", renderer.currentFrameTimeMS), valueColor: healthColor(label: "frame ms", value: renderer.currentFrameTimeMS))
+        appendKV(a, "profile", frameLoader.latestProfile)
+        appendKV(a, "sim time", String(format: "%.2f", frameLoader.latestSimTime))
+        append(a, "\n", color: rmuText())
+
+        append(a, sectionTitle("PHYSICS"), color: rmuCyan(), font: monoFont(size: 13, weight: .semibold))
+        appendKV(a, "behavior", runtimeBehaviorLabel(), valueColor: rmuAmber())
+        appendKV(a, "runtime", runtimeModeLabel(), valueColor: statusColor(runtimeStatusLabel()))
+        appendKV(a, "armed", runtimeArmedLabel(), valueColor: statusColor(runtimeArmedLabel()))
+        appendKV(a, "particles", "\(frameLoader.latestPointCount)")
+        appendKV(a, "source count", "\(frameLoader.sourceParticleCount)")
+        appendKV(a, "field layers", renderer.fieldLayersEnabled ? "ON" : "OFF", valueColor: statusColor(renderer.fieldLayersEnabled ? "ON" : "OFF"))
+        appendKV(a, "selected", renderer.selectedFieldLayerName.uppercased(), valueColor: rmuAmber())
+        appendKV(a, "recipe", renderer.fieldLayerSummary())
+        append(a, "\n", color: rmuText())
+
+        append(a, sectionTitle("DATASET"), color: rmuCyan(), font: monoFont(size: 13, weight: .semibold))
+        if let ds = dataset {
+            appendKV(a, "mode", stringValue(ds["mode"]), valueColor: rmuAmber())
+            appendKV(a, "rows", numberString(ds["row_count"], digits: 0))
+            appendKV(a, "sample", numberString(ds["sample_index"], digits: 0))
+            appendKV(a, "loaded", stringValue(ds["loaded"]).uppercased(), valueColor: statusColor(stringValue(ds["loaded"])))
+            appendKV(a, "fallback", stringValue(ds["fallback_active"]).uppercased(), valueColor: boolValue(ds["fallback_active"]) ? rmuRed() : rmuGreen())
+        } else {
+            appendKV(a, "status", "MISSING", valueColor: rmuRed())
+        }
+        append(a, "\n", color: rmuText())
+
+        append(a, sectionTitle("ALERTS"), color: rmuCyan(), font: monoFont(size: 13, weight: .semibold))
+        if renderer.lateFrameWarning { appendKV(a, "01 frame", "LATE", valueColor: rmuYellow()) }
+        if renderer.vcvDisplayStatus().lowercased().contains("stale") { appendKV(a, "02 vcv", "STALE", valueColor: rmuYellow()) }
+        if let ds = dataset, boolValue(ds["fallback_active"]) { appendKV(a, "03 data", "FALLBACK", valueColor: rmuRed()) }
+        if activeAlertCount(renderer: renderer) == 0 { appendKV(a, "status", "NOMINAL", valueColor: rmuGreen()) }
+        return a
+    }
+
+    func rightControlAttributed(renderer: MetalRenderer, dataset: [String: Any]?, coupling: [String: Any]?) -> NSAttributedString {
+        let a = NSMutableAttributedString()
+        append(a, "\(activePage) CONTROLS\n", color: rmuAmber(), font: monoFont(size: 13, weight: .semibold))
+        append(a, "────────────────────────────\n", color: rmuDim())
+        switch activePage {
+        case "HOME":
+            appendKV(a, "overview", "system + live telemetry")
+            appendKV(a, "HUD cycle", "SHIFT+M")
+            appendKV(a, "compact", "M")
+            appendKV(a, "hide HUD", "H")
+        case "DATA":
+            appendKV(a, "source", (stringValue(dataset?["source_csv"]) as NSString).lastPathComponent)
+            appendKV(a, "mode", stringValue(dataset?["mode"]), valueColor: rmuAmber())
+            appendKV(a, "loaded", stringValue(dataset?["loaded"]).uppercased(), valueColor: statusColor(stringValue(dataset?["loaded"])))
+            appendKV(a, "terminal", "rmu_data_mode.sh")
+        case "FIELD":
+            appendKV(a, "toggle fields", "F")
+            appendKV(a, "select layer", "TAB")
+            appendKV(a, "layer on/off", "SPACE")
+            appendKV(a, "weight", "/  \\")
+        case "COUPLING":
+            appendKV(a, "coupling", renderer.dataCouplingEnabled ? "ON" : "OFF", valueColor: renderer.dataCouplingEnabled ? rmuGreen() : rmuYellow())
+            appendKV(a, "toggle", "SHIFT+B")
+            appendKV(a, "gain cycle", "SHIFT+G")
+            appendKV(a, "gain", String(format: "%.2f", renderer.dataCouplingGain), valueColor: rmuAmber())
+            appendKV(a, "smooth", String(format: "%.2f", renderer.dataCouplingSmooth))
+        case "VCV":
+            appendKV(a, "status", renderer.vcvDisplayStatus(), valueColor: statusColor(renderer.vcvDisplayStatus()))
+            appendKV(a, "field ctrl", renderer.vcvFieldControlEnabled ? "ON" : "OFF", valueColor: statusColor(renderer.vcvFieldControlEnabled ? "ON" : "OFF"))
+            appendKV(a, "toggle VCV", "SHIFT+V")
+            appendKV(a, "OSC monitor", "SHIFT+O")
+        case "NAV":
+            appendKV(a, "pan", "arrow keys")
+            appendKV(a, "rotate", "A / D")
+            appendKV(a, "zoom", "W / Z  Q / E")
+            appendKV(a, "camera reset", "X")
+            appendKV(a, "particle reset", "SHIFT+R")
+        case "CAPTURE":
+            appendKV(a, "screenshot", "S")
+            appendKV(a, "clean shot", "J")
+            appendKV(a, "burst", "K")
+            appendKV(a, "clean burst", "L")
+            appendKV(a, "presentation", "Y")
+        case "ALERTS":
+            appendKV(a, "late frame", renderer.lateFrameWarning ? "TRUE" : "FALSE", valueColor: renderer.lateFrameWarning ? rmuYellow() : rmuGreen())
+            appendKV(a, "vcv", renderer.vcvDisplayStatus(), valueColor: statusColor(renderer.vcvDisplayStatus()))
+            appendKV(a, "fallback", stringValue(dataset?["fallback_active"]).uppercased(), valueColor: boolValue(dataset?["fallback_active"]) ? rmuRed() : rmuGreen())
+        default:
+            appendKV(a, "page", activePage)
+        }
+        append(a, "\nCLICK A TILE TO OPEN A SUBSYSTEM\n", color: rmuDim())
+        append(a, "1/2 toggle left/right panels\n", color: rmuDim())
+        append(a, "ESC quit renderer\n", color: rmuDim())
+        return a
+    }
+
+    func bottomConsoleAttributed(renderer: MetalRenderer, dataset: [String: Any]?, coupling: [String: Any]?) -> NSAttributedString {
+        let a = NSMutableAttributedString()
+        append(a, "\(activePage) CONSOLE  >  ACTIVE PAGE: \(activePage)\n", color: rmuAmber(), font: titleFont(size: 17))
+        append(a, "────────────────────────────────────────────────────────────────────────────────────────────────────────\n", color: rmuDim())
+        switch activePage {
+        case "HOME": bottomHome(a, renderer: renderer, dataset: dataset, coupling: coupling)
+        case "DATA": bottomData(a, renderer: renderer, dataset: dataset)
+        case "FIELD": bottomField(a, renderer: renderer)
+        case "COUPLING": bottomCoupling(a, renderer: renderer, coupling: coupling)
+        case "VCV": bottomVCV(a, renderer: renderer)
+        case "NAV": bottomNav(a, renderer: renderer, dataset: dataset)
+        case "CAPTURE": bottomCapture(a, renderer: renderer)
+        case "ALERTS": bottomAlerts(a, renderer: renderer, dataset: dataset)
+        default: bottomHome(a, renderer: renderer, dataset: dataset, coupling: coupling)
+        }
+        return a
+    }
+
+    func bottomHome(_ a: NSMutableAttributedString, renderer: MetalRenderer, dataset: [String: Any]?, coupling: [String: Any]?) {
+        appendKV(a, "system", frameLoader.metadataLoaded ? "LIVE" : "WAITING", valueColor: statusColor(frameLoader.metadataLoaded ? "LIVE" : "WAITING"))
+        appendKV(a, "fps", String(format: "%.1f", renderer.currentFPS), valueColor: healthColor(label: "fps", value: renderer.currentFPS))
+        appendKV(a, "dataset", boolValue(dataset?["loaded"]) ? "LOADED" : "MISSING", valueColor: boolValue(dataset?["loaded"]) ? rmuGreen() : rmuRed())
+        appendKV(a, "coupling", renderer.dataCouplingEnabled ? "ACTIVE" : "OFF", valueColor: renderer.dataCouplingEnabled ? rmuGreen() : rmuYellow())
+        appendKV(a, "vcv", renderer.vcvDisplayStatus(), valueColor: statusColor(renderer.vcvDisplayStatus()))
+        appendKV(a, "behavior", runtimeBehaviorLabel(), valueColor: rmuAmber())
+        appendKV(a, "summary", renderer.dataCouplingPanelSummary())
+    }
+
+    func bottomData(_ a: NSMutableAttributedString, renderer: MetalRenderer, dataset: [String: Any]?) {
+        guard let ds = dataset else { appendKV(a, "dataset", "MISSING", valueColor: rmuRed()); return }
+        let state = ds["state"] as? [String: Any] ?? [:]
+        appendKV(a, "source", (stringValue(ds["source_csv"]) as NSString).lastPathComponent)
+        appendKV(a, "rows", numberString(ds["row_count"], digits: 0))
+        appendKV(a, "sample", numberString(ds["sample_index"], digits: 0))
+        appendKV(a, "x", numberString(state["x"], digits: 3), valueColor: rmuCyan())
+        appendKV(a, "y / depth", numberString(state["y"], digits: 3), valueColor: rmuCyan())
+        appendKV(a, "z", numberString(state["z"], digits: 3), valueColor: rmuCyan())
+        if let n = state["curvature_density"] as? NSNumber { appendKV(a, "curvature", String(format: "%.3f", n.doubleValue), valueColor: healthColor(label: "curvature", value: n.doubleValue)) }
+        if let n = state["temperature_proxy"] as? NSNumber { appendKV(a, "temperature", String(format: "%.3f", n.doubleValue), valueColor: healthColor(label: "temperature", value: n.doubleValue)) }
+        if let n = state["higgs_lambda"] as? NSNumber { appendKV(a, "higgs_lambda", String(format: "%.3f", n.doubleValue), valueColor: healthColor(label: "higgs", value: n.doubleValue)) }
+        if let n = state["probability_weight"] as? NSNumber { appendKV(a, "probability", String(format: "%.3f", n.doubleValue), valueColor: healthColor(label: "probability", value: n.doubleValue)) }
+        appendKV(a, "fallback", stringValue(ds["fallback_active"]).uppercased(), valueColor: boolValue(ds["fallback_active"]) ? rmuRed() : rmuGreen())
+        if let reg = ds["registry"] as? [String: Any], let maps = reg["mappings"] as? [String] {
+            appendKV(a, "mappings", maps.prefix(5).joined(separator: ", ") + (maps.count > 5 ? ", ..." : ""))
+        }
+    }
+
+    func bottomField(_ a: NSMutableAttributedString, renderer: MetalRenderer) {
+        appendKV(a, "field layers", renderer.fieldLayersEnabled ? "ON" : "OFF", valueColor: statusColor(renderer.fieldLayersEnabled ? "ON" : "OFF"))
+        appendKV(a, "selected", renderer.selectedFieldLayerName.uppercased(), valueColor: rmuAmber())
+        appendKV(a, "selected weight", String(format: "%.2f", renderer.selectedFieldLayerWeight), valueColor: rmuAmber())
+        appendKV(a, "recipe", renderer.fieldLayerSummary())
+        for i in 0..<renderer.fieldLayerNames.count {
+            let name = renderer.fieldLayerNames[i]
+            let val = renderer.fieldLayerWeights[i]
+            let enabled = renderer.fieldLayerEnabled[i]
+            appendKV(a, name, String(format: "%.2f  %@", val, enabled ? "ON" : "OFF"), valueColor: enabled ? rmuGreen() : rmuDim())
+        }
+    }
+
+    func bottomCoupling(_ a: NSMutableAttributedString, renderer: MetalRenderer, coupling: [String: Any]?) {
+        appendKV(a, "enabled", renderer.dataCouplingEnabled ? "TRUE" : "FALSE", valueColor: renderer.dataCouplingEnabled ? rmuGreen() : rmuYellow())
+        appendKV(a, "gain", String(format: "%.2f", renderer.dataCouplingGain), valueColor: rmuAmber())
+        appendKV(a, "smooth", String(format: "%.2f", renderer.dataCouplingSmooth))
+        appendKV(a, "status", stringValue(coupling?["status"]), valueColor: statusColor(stringValue(coupling?["status"])))
+        appendKV(a, "summary", stringValue(coupling?["summary"]))
+        if let values = coupling?["values"] as? [String: Any] {
+            for key in ["curvature_drive", "temperature_drive", "higgs_drive", "probability_drive", "vertical_drive"] {
+                appendKV(a, key, numberString(values[key], digits: 3), valueColor: healthColor(label: key, value: (values[key] as? NSNumber)?.doubleValue ?? 0.0))
+            }
+        }
+    }
+
+    func bottomVCV(_ a: NSMutableAttributedString, renderer: MetalRenderer) {
+        appendKV(a, "display", renderer.vcvDisplayStatus(), valueColor: statusColor(renderer.vcvDisplayStatus()))
+        appendKV(a, "source", renderer.probabilitySource, valueColor: rmuAmber())
+        appendKV(a, "field control", renderer.vcvFieldControlEnabled ? "ON" : "OFF", valueColor: statusColor(renderer.vcvFieldControlEnabled ? "ON" : "OFF"))
+        appendKV(a, "safe mode", renderer.vcvSafeModeEnabled ? "ON" : "OFF", valueColor: statusColor(renderer.vcvSafeModeEnabled ? "ON" : "OFF"))
+        appendKV(a, "clamp", renderer.vcvLastClampEvent)
+        append(a, renderer.vcvChannelCompactSummary(), color: rmuCyan())
+    }
+
+    func bottomNav(_ a: NSMutableAttributedString, renderer: MetalRenderer, dataset: [String: Any]?) {
+        let state = dataset?["state"] as? [String: Any] ?? [:]
+        appendKV(a, "x / lon drive", numberString(state["x"], digits: 3), valueColor: rmuCyan())
+        appendKV(a, "y / depth", numberString(state["y"], digits: 3), valueColor: rmuCyan())
+        appendKV(a, "z / lat drive", numberString(state["z"], digits: 3), valueColor: rmuCyan())
+        appendKV(a, "rotation", String(format: "%.1f°", renderer.rotationRadians * 180.0 / .pi), valueColor: rmuAmber())
+        appendKV(a, "pan", String(format: "%.2f, %.2f", renderer.panX, renderer.panY))
+        appendKV(a, "display radius", String(format: "%.2f", renderer.manualWorldRadius ?? frameLoader.worldRadius))
+        appendKV(a, "range rings", renderer.curvatureOverlayEnabled ? "ON" : "OFF", valueColor: statusColor(renderer.curvatureOverlayEnabled ? "ON" : "OFF"))
+    }
+
+    func bottomCapture(_ a: NSMutableAttributedString, renderer: MetalRenderer) {
+        appendKV(a, "window shot", "S")
+        appendKV(a, "clean shot", "J")
+        appendKV(a, "burst", "K / L")
+        appendKV(a, "presentation", renderer.presentationModeEnabled ? "ON" : "OFF", valueColor: statusColor(renderer.presentationModeEnabled ? "ON" : "OFF"))
+        appendKV(a, "sample request", "\(frameLoader.renderSampleCount)")
+        appendKV(a, "HUD visible", overlaysVisible ? "TRUE" : "FALSE", valueColor: overlaysVisible ? rmuGreen() : rmuYellow())
+    }
+
+    func bottomAlerts(_ a: NSMutableAttributedString, renderer: MetalRenderer, dataset: [String: Any]?) {
+        if activeAlertCount(renderer: renderer) == 0 { appendKV(a, "system", "NOMINAL", valueColor: rmuGreen()) }
+        appendKV(a, "late frame", renderer.lateFrameWarning ? "TRUE" : "FALSE", valueColor: renderer.lateFrameWarning ? rmuYellow() : rmuGreen())
+        appendKV(a, "vcv", renderer.vcvDisplayStatus(), valueColor: statusColor(renderer.vcvDisplayStatus()))
+        appendKV(a, "dataset fallback", stringValue(dataset?["fallback_active"]).uppercased(), valueColor: boolValue(dataset?["fallback_active"]) ? rmuRed() : rmuGreen())
+        appendKV(a, "dataset loaded", stringValue(dataset?["loaded"]).uppercased(), valueColor: boolValue(dataset?["loaded"]) ? rmuGreen() : rmuRed())
+    }
+
+    func microNavAttributed(renderer: MetalRenderer, dataset: [String: Any]?) -> NSAttributedString {
+        let a = NSMutableAttributedString()
+        append(a, "MICRO NAV\n", color: rmuCyan(), font: monoFont(size: 12, weight: .semibold))
+        append(a, "      N\n", color: rmuDim())
+        append(a, "   ┌─────┐\n", color: rmuDim())
+        append(a, "W ─┤  ✦  ├─ E\n", color: rmuTeal())
+        append(a, "   └─────┘\n", color: rmuDim())
+        append(a, "      S\n", color: rmuDim())
+        appendKV(a, "RNG", String(format: "%.2f", renderer.manualWorldRadius ?? frameLoader.worldRadius), unit: "rmu")
+        return a
+    }
+
+    func depthGaugeAttributed(renderer: MetalRenderer, dataset: [String: Any]?) -> NSAttributedString {
+        let a = NSMutableAttributedString()
+        let state = dataset?["state"] as? [String: Any] ?? [:]
+        let yVal = (state["y"] as? NSNumber)?.doubleValue ?? 0.0
+        let tempVal = (state["temperature_proxy"] as? NSNumber)?.doubleValue ?? 0.0
+        let bars = max(1, min(10, Int(abs(yVal) * 10.0) + 1))
+        append(a, "DEPTH / STATUS\n", color: rmuCyan(), font: monoFont(size: 12, weight: .semibold))
+        append(a, String(repeating: "▰", count: bars), color: healthColor(label: "temp", value: tempVal))
+        append(a, String(repeating: "▱", count: max(0, 10 - bars)), color: rmuDim())
+        append(a, "\n")
+        appendKV(a, "y", String(format: "%.3f", yVal), valueColor: rmuCyan())
+        appendKV(a, "temp", String(format: "%.3f", tempVal), valueColor: healthColor(label: "temperature", value: tempVal))
+        appendKV(a, "status", boolValue(dataset?["fallback_active"]) ? "FALLBACK" : "NOMINAL", valueColor: boolValue(dataset?["fallback_active"]) ? rmuRed() : rmuGreen())
+        return a
+    }
+
+    func commandBarAttributed(renderer: MetalRenderer) -> NSAttributedString {
+        let a = NSMutableAttributedString()
+        append(a, "COMMAND LINE  > ", color: rmuDim())
+        append(a, "SHIFT+M cycle pages", color: rmuAmber())
+        append(a, "   LOG LEVEL ", color: rmuDim())
+        append(a, "INFO", color: rmuCyan())
+        append(a, "   CPU --%   GPU --%   MEM --   NET LOCAL LOOPBACK", color: rmuDim())
+        return a
+    }
 }
+
 
 final class MetalRenderer: NSObject, MTKViewDelegate {
     let device: MTLDevice
@@ -365,6 +812,18 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
     let projectRoot: String
 
     var particleBuffer: MTLBuffer?
+
+    // RMU v1.3F6: real independent geospatial particle buffers.
+    // base = original crab-data position, live = simulated position, velocity = persistent per-particle motion.
+    var baseParticleBuffer: MTLBuffer?
+    var liveParticleBuffer: MTLBuffer?
+    var velocityParticleBuffer: MTLBuffer?
+    var lastUploadedParticleCount: Int = 0
+    var lastUploadedModificationDate: Date? = nil
+    var computePipelineState: MTLComputePipelineState?
+    var geospatialDamping: Float = 0.965
+    var geospatialSimDt: Float = 1.0 / 60.0
+
     var trailBuffers: [MTLBuffer] = []
     var trailCounts: [Int] = []
 
@@ -397,20 +856,24 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
     var vcvMonitorVisible = true
     var vcvSmoothingAmount: Float = 0.22
     var vcvChannelLabels: [String] = [
-        "probability", "radial", "orbital", "vertical",
-        "turbulence", "shell", "color", "scene"
+        "probability", "radial", "orbital", "vertical", "turbulence", "shell", "color", "scene",
+        "particle_speed", "particle_mass", "aux_11", "aux_12", "aux_13", "aux_14", "aux_15", "aux_16",
+        "aux_17", "aux_18", "aux_19", "aux_20", "aux_21", "aux_22", "aux_23", "aux_24",
+        "aux_25", "aux_26", "aux_27", "aux_28", "aux_29", "aux_30", "aux_31", "aux_32"
     ]
     var vcvChannelTargets: [String] = [
-        "probability_value", "field_layer_weights[0]", "field_layer_weights[1]", "field_layer_weights[2]",
-        "field_layer_weights[3]", "field_layer_weights[4]", "color_mode", "scene_index"
+        "probability_value", "field_layer_weights[0]", "field_layer_weights[1]", "field_layer_weights[2]", "field_layer_weights[3]", "field_layer_weights[4]", "color_mode", "scene_index",
+        "particle_speed", "particle_mass", "aux_11", "aux_12", "aux_13", "aux_14", "aux_15", "aux_16",
+        "aux_17", "aux_18", "aux_19", "aux_20", "aux_21", "aux_22", "aux_23", "aux_24",
+        "aux_25", "aux_26", "aux_27", "aux_28", "aux_29", "aux_30", "aux_31", "aux_32"
     ]
-    var vcvChannelEnabled: [Bool] = [true, true, true, true, true, true, true, true]
-    var vcvChannelValues: [Float] = [0, 0, 0, 0, 0, 0, 0, 0]
-    var vcvRawChannelValues: [Float] = [0, 0, 0, 0, 0, 0, 0, 0]
+    var vcvChannelEnabled: [Bool] = Array(repeating: true, count: 32)
+    var vcvChannelValues: [Float] = [0, 0, 0, 0, 0, 0, 0, 0, 1.0, 1.0] + Array(repeating: 0.0, count: 22)
+    var vcvRawChannelValues: [Float] = Array(repeating: 0.0, count: 32)
     var vcvSafeModeEnabled = true
     var vcvLastClampEvent = "none"
 
-    var trailsEnabled = true
+    var trailsEnabled = false
     var trailLength = 12
     var trailAlphaFloor: Float = 0.08
     var trailAlphaCeiling: Float = 0.42
@@ -428,6 +891,43 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
     var fieldLayerEnabled: [Bool] = [true, true, true, false, true]
     var fieldLayerWeights: [Float] = [0.25, 1.00, 0.10, 0.05, 0.20]
     var fieldPhase: Float = 0.0
+
+    // RMU_V1_3D2_RENDERER_BEHAVIOR_STATE
+    // Renderer-authoritative geospatial behavior transforms.
+    // SPACE gates these transforms. When paused, the crab CSV field remains stable.
+    var behaviorEffectCode: Int32 = 1
+    var geospatialSimulationPaused: Int32 = 1
+
+    // RMU v1.3F6: Lorenz/VCV bipolar controls.
+    // /ch/9  particle_speed: -5V..+5V -> -3.0..+3.0 motion scalar.
+    // /ch/10 particle_mass:  -5V..+5V -> 0.20..5.00 positive inertia.
+    // Anchor tether is retired from live motion; crab geography is the starting condition.
+    var geospatialParticleSpeed: Float = 1.0
+    var geospatialParticleMass: Float = 1.0
+    var geospatialAnchorStrength: Float = 0.0  // deprecated compatibility field
+    var geospatialBehaviorGain: Float = 1.0
+    var geospatialDisplayParticleLimit: Int = 45000
+
+    // v1.2A: dataset-driven simulation/field coupling.
+    // This is intentionally separate from the VCV /ch/1-/ch/8 contract.
+    var dataCouplingEnabled = true
+    var dataCouplingGain: Float = 1.0
+    var dataCouplingSmooth: Float = 0.15
+    var dataCouplingLastReadTime: Double = 0.0
+    var dataCouplingLoaded = false
+    var dataCouplingFallbackActive = true
+    var dataCouplingStatus = "waiting"
+    var dataCouplingFallbackReason = "not loaded"
+    var dataCouplingSource = "none"
+    var dataCouplingSummary = "dataset coupling waiting"
+    var dataCouplingValues: [String: Float] = [
+        "curvature_drive": 0.0,
+        "temperature_drive": 0.25,
+        "higgs_drive": 0.35,
+        "probability_drive": 0.0,
+        "vertical_drive": 0.0
+    ]
+    var dataCouplingTargets: [Float] = [0.25, 1.00, 0.10, 0.05, 0.20]
 
     var gridBuffer: MTLBuffer?
     var centerBuffer: MTLBuffer?
@@ -493,10 +993,14 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
             constant int4 &fieldEnabledA [[buffer(11)]],
             constant int &fieldEnabledShell [[buffer(12)]],
             constant float &fieldPhase [[buffer(13)]],
+            constant int &behaviorEffectCode [[buffer(14)]],
+            constant int &geospatialPaused [[buffer(15)]],
+            constant float &anchorStrength [[buffer(16)]],
             uint vertexID [[vertex_id]]
         ) {
             Particle p = particles[vertexID];
             float3 fp = p.position;
+            float3 baseGeospatialPosition = fp;
 
             float baseRadius = max(length(fp), 0.0001);
             float3 dir = fp / baseRadius;
@@ -529,6 +1033,46 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
                     shellMask = exp(-(q * q)) * fieldWeightShell;
                     fp += dir * shellMask * 0.10;
                 }
+            }
+
+            // RMU_V1_3E_RUNTIME_BOUND_BEHAVIOR_TRANSFORM
+            // Renderer-authoritative geospatial behavior engine.
+            if (overlayMode == 0 && geospatialPaused == 0 && behaviorEffectCode != 0) {
+                float runT = max(fieldPhase, 0.0);
+                float grow = clamp(runT * 0.18, 0.0, 1.0);
+                float orbitPulse = sin(runT * 1.35 + baseRadius * 2.0);
+                float wave = sin(baseRadius * 3.2 - runT * 2.4);
+                float3 tangent = normalize(float3(-fp.z, 0.0, fp.x) + float3(0.0001, 0.0, 0.0001));
+
+                if (behaviorEffectCode == 1) {
+                    float theta = 0.18 * grow;
+                    float cs = cos(theta);
+                    float sn = sin(theta);
+                    fp.xz = float2(fp.x * cs - fp.z * sn, fp.x * sn + fp.z * cs);
+                    fp += tangent * (0.10 + 0.05 * orbitPulse);
+                    fp += dir * (0.035 * sin(runT + baseRadius * 1.7));
+                } else if (behaviorEffectCode == 2) {
+                    float collapse = clamp(grow * 0.82, 0.0, 0.88);
+                    fp *= (1.0 - collapse);
+                    fp += tangent * (0.18 * (1.0 - collapse));
+                } else if (behaviorEffectCode == 3) {
+                    float theta = 1.85 * grow + baseRadius * 0.08;
+                    float cs = cos(theta);
+                    float sn = sin(theta);
+                    fp.xz = float2(fp.x * cs - fp.z * sn, fp.x * sn + fp.z * cs);
+                    fp.y *= mix(1.0, 0.08, grow);
+                    fp += tangent * (0.22 + 0.08 * orbitPulse);
+                } else if (behaviorEffectCode == 4) {
+                    fp += dir * (0.55 * grow + 0.30 * wave);
+                    fp.y += 0.38 * sin(runT * 2.1 + baseRadius * 2.4);
+                } else if (behaviorEffectCode == 5) {
+                    float collapse = clamp(grow * 1.05, 0.0, 0.96);
+                    fp *= (1.0 - collapse);
+                    fp += tangent * (0.07 * (1.0 - collapse));
+                }
+
+                baseRadius = max(length(fp), 0.0001);
+                dir = fp / baseRadius;
             }
 
             float c = cos(rotationRadians);
@@ -576,6 +1120,101 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
             return out;
         }
 
+        kernel void update_geospatial_particles(
+            const device Particle *baseParticles [[buffer(0)]],
+            device Particle *liveParticles [[buffer(1)]],
+            device Particle *velocityParticles [[buffer(2)]],
+            constant uint &particleCount [[buffer(3)]],
+            constant float &dt [[buffer(4)]],
+            constant int &behaviorEffectCode [[buffer(5)]],
+            constant float &particleSpeed [[buffer(6)]],
+            constant float &damping [[buffer(7)]],
+            constant float4 &fieldWeightsA [[buffer(8)]],
+            constant float &fieldWeightShell [[buffer(9)]],
+            constant float &phase [[buffer(10)]],
+            constant float &particleMass [[buffer(11)]],
+            uint id [[thread_position_in_grid]]
+        ) {
+            if (id >= particleCount) { return; }
+
+            float3 base = baseParticles[id].position;
+            float3 pos = liveParticles[id].position;
+            float3 vel = velocityParticles[id].position;
+
+            float r = max(length(pos), 0.0001);
+            float3 dir = pos / r;
+            float3 baseDir = normalize(base + float3(0.0001, 0.0001, 0.0001));
+            float3 tangent = normalize(float3(-pos.z, 0.0, pos.x) + float3(0.0001, 0.0, 0.0001));
+
+            float seed = fract(sin((float(id) + 1.0) * 12.9898) * 43758.5453);
+            float seed2 = fract(sin((float(id) + 17.0) * 78.233) * 23454.123);
+            float seed3 = fract(sin((float(id) + 43.0) * 31.416) * 9917.777);
+            float particleGain = 0.35 + seed3 * 1.65;
+            float localPhase = phase * (0.75 + seed * 1.75) + seed2 * 6.2831853;
+
+            float radialW = fieldWeightsA.x;
+            float orbitalW = fieldWeightsA.y;
+            float verticalW = fieldWeightsA.z;
+            float turbW = fieldWeightsA.w;
+            float shellW = fieldWeightShell;
+
+            float3 force = float3(0.0);
+            float speedScalar = clamp(particleSpeed, -3.0, 3.0);
+            float massScalar = max(particleMass, 0.20);
+
+            // v1.3F6: no active anchor tether. Crab geography is the initial condition;
+            // speed and mass now control free-roaming independent particles.
+
+            // Shared field controls still matter, but are now per-particle forces.
+            force += tangent * (0.010 * orbitalW * particleGain);
+            force += -dir * (0.006 * radialW);
+            force.y += sin(localPhase) * 0.010 * verticalW;
+            force += float3(
+                sin(localPhase * 1.9 + pos.x * 2.1),
+                cos(localPhase * 1.3 + pos.y * 3.1),
+                sin(localPhase * 1.7 + pos.z * 2.7)
+            ) * (0.004 * turbW * particleGain);
+            force += dir * sin(r * 2.8 - phase * 1.7 + seed) * (0.004 * shellW);
+
+            if (behaviorEffectCode == 1) {
+                // stable_orbit_cloud: independent orbit with strong memory.
+                force += tangent * (0.022 * particleGain);
+            } else if (behaviorEffectCode == 2) {
+                // black_hole_capture: individual inward streams, anchor competes against capture.
+                force += -dir * (0.040 + 0.055 * seed) * particleGain;
+                force += tangent * (0.015 + 0.020 * seed2);
+            } else if (behaviorEffectCode == 3) {
+                // accretion_disk: flatten and rotate independently.
+                force += tangent * (0.052 + 0.035 * seed) * particleGain;
+                force.y += -pos.y * (0.060 + 0.070 * seed2);
+                force += -dir * 0.010;
+            } else if (behaviorEffectCode == 4) {
+                // field_pressure_bounce: pressure waves / rebounds.
+                float wave = sin(r * 5.0 - phase * 3.6 + seed * 6.2831853);
+                force += dir * wave * (0.060 + 0.035 * seed2) * particleGain;
+                force.y += cos(localPhase * 1.6) * 0.045 * particleGain;
+            } else if (behaviorEffectCode == 5) {
+                // infinite_collapse: aggressive independent collapse.
+                force += -dir * (0.090 + 0.080 * seed) * particleGain;
+                force += tangent * (0.010 * sin(localPhase));
+            }
+
+            float3 acceleration = force / massScalar;
+            vel = (vel + acceleration * dt * 60.0 * speedScalar) * damping;
+            pos += vel * dt * 60.0;
+
+            // Hard safety clamp, prevents particles from going into numerical infinity.
+            float maxRadius = 14.0;
+            float lr = length(pos);
+            if (lr > maxRadius) {
+                pos = normalize(pos) * maxRadius;
+                vel *= 0.25;
+            }
+
+            liveParticles[id].position = pos;
+            velocityParticles[id].position = vel;
+        }
+
         fragment float4 fragment_main(VertexOut in [[stage_in]]) {
             return in.color;
         }
@@ -597,6 +1236,12 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
             descriptor.colorAttachments[0].sourceAlphaBlendFactor = .sourceAlpha
             descriptor.colorAttachments[0].destinationAlphaBlendFactor = .oneMinusSourceAlpha
             self.pipelineState = try device.makeRenderPipelineState(descriptor: descriptor)
+            if let computeFunction = library.makeFunction(name: "update_geospatial_particles") {
+                self.computePipelineState = try? device.makeComputePipelineState(function: computeFunction)
+                if self.computePipelineState == nil {
+                    print("WARNING: v1.3F6 compute pipeline was not created; renderer will fall back to static draw.")
+                }
+            }
         } catch {
             print("Metal pipeline creation failed: \(error)")
             return nil
@@ -682,6 +1327,51 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
         hud?.updateLayout()
     }
 
+    func encodeGeospatialParticleUpdate(commandBuffer: MTLCommandBuffer) {
+        guard geospatialSimulationPaused == 0,
+              let computePipelineState = computePipelineState,
+              let base = baseParticleBuffer,
+              let live = liveParticleBuffer,
+              let velocity = velocityParticleBuffer,
+              let encoder = commandBuffer.makeComputeCommandEncoder() else { return }
+
+        var count = UInt32(max(0, lastUploadedParticleCount))
+        if count == 0 { return }
+        var dt = geospatialSimDt
+        var behavior = behaviorEffectCode
+        var particleSpeed = geospatialParticleSpeed
+        var damping = geospatialDamping
+        var weightsA = SIMD4<Float>(
+            fieldLayerWeights[0],
+            fieldLayerWeights[1],
+            fieldLayerWeights[2],
+            fieldLayerWeights[3]
+        )
+        var shell = fieldLayerWeights[4]
+        var phase = fieldPhase
+
+        encoder.setComputePipelineState(computePipelineState)
+        encoder.setBuffer(base, offset: 0, index: 0)
+        encoder.setBuffer(live, offset: 0, index: 1)
+        encoder.setBuffer(velocity, offset: 0, index: 2)
+        encoder.setBytes(&count, length: MemoryLayout<UInt32>.stride, index: 3)
+        encoder.setBytes(&dt, length: MemoryLayout<Float>.stride, index: 4)
+        encoder.setBytes(&behavior, length: MemoryLayout<Int32>.stride, index: 5)
+        encoder.setBytes(&particleSpeed, length: MemoryLayout<Float>.stride, index: 6)
+        encoder.setBytes(&damping, length: MemoryLayout<Float>.stride, index: 7)
+        encoder.setBytes(&weightsA, length: MemoryLayout<SIMD4<Float>>.stride, index: 8)
+        encoder.setBytes(&shell, length: MemoryLayout<Float>.stride, index: 9)
+        encoder.setBytes(&phase, length: MemoryLayout<Float>.stride, index: 10)
+        var particleMass = geospatialParticleMass
+        encoder.setBytes(&particleMass, length: MemoryLayout<Float>.stride, index: 11)
+
+        let threads = MTLSize(width: Int(count), height: 1, depth: 1)
+        let w = min(computePipelineState.maxTotalThreadsPerThreadgroup, 256)
+        let groups = MTLSize(width: w, height: 1, depth: 1)
+        encoder.dispatchThreads(threads, threadsPerThreadgroup: groups)
+        encoder.endEncoding()
+    }
+
     func draw(in view: MTKView) {
         let drawStart = CFAbsoluteTimeGetCurrent()
         frameLoader.loadIfNeeded()
@@ -694,8 +1384,9 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
         renderPassDescriptor.colorAttachments[0].loadAction = .clear
         renderPassDescriptor.colorAttachments[0].storeAction = .store
 
-        guard let commandBuffer = commandQueue.makeCommandBuffer(),
-              let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor) else { return }
+        guard let commandBuffer = commandQueue.makeCommandBuffer() else { return }
+        encodeGeospatialParticleUpdate(commandBuffer: commandBuffer)
+        guard let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor) else { return }
 
         encoder.setRenderPipelineState(pipelineState)
 
@@ -723,7 +1414,7 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
             }
         }
 
-        if let buffer = particleBuffer, frameLoader.latestPointCount > 0 {
+        if let buffer = liveParticleBuffer ?? particleBuffer, frameLoader.latestPointCount > 0 {
             drawBuffer(encoder: encoder, buffer: buffer, count: frameLoader.latestPointCount, alpha: 1.0, pointSizeOverride: pointSize, overlayMode: 0)
         }
 
@@ -759,8 +1450,11 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
         lateFrameWarning = currentFrameTimeMS > 20.0 || currentFPS < 54.0
 
         loadVCVStateIfNeeded()
+        loadDatasetCouplingIfNeeded()
         updateAutoCamera()
-        fieldPhase += 0.015
+        if geospatialSimulationPaused == 0 {
+            fieldPhase += 0.035
+        }
 
         frameIndex += 1
         framesSincePrint += 1
@@ -798,6 +1492,11 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
         )
         var enabledShell = fieldLayerEnabled[4] ? Int32(1) : Int32(0)
         var phase = fieldPhase
+        // v1.3F6: true motion is handled by the Metal compute kernel.
+        // Keep vertex shader behavior disabled for main particles to avoid whole-cloud deformation.
+        var behaviorCodeForShader = Int32(0)
+        var geospatialPausedForShader = geospatialSimulationPaused
+        var anchorStrengthForShader = geospatialAnchorStrength
 
         encoder.setVertexBuffer(buffer, offset: 0, index: 0)
         encoder.setVertexBytes(&radius, length: MemoryLayout<Float>.stride, index: 1)
@@ -813,28 +1512,68 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
         encoder.setVertexBytes(&enabledA, length: MemoryLayout<SIMD4<Int32>>.stride, index: 11)
         encoder.setVertexBytes(&enabledShell, length: MemoryLayout<Int32>.stride, index: 12)
         encoder.setVertexBytes(&phase, length: MemoryLayout<Float>.stride, index: 13)
-        encoder.drawPrimitives(type: .point, vertexStart: 0, vertexCount: count)
+        encoder.setVertexBytes(&behaviorCodeForShader, length: MemoryLayout<Int32>.stride, index: 14)
+        encoder.setVertexBytes(&geospatialPausedForShader, length: MemoryLayout<Int32>.stride, index: 15)
+        encoder.setVertexBytes(&anchorStrengthForShader, length: MemoryLayout<Float>.stride, index: 16)
+        let drawCount = (overlayMode == 0 && count > geospatialDisplayParticleLimit) ? geospatialDisplayParticleLimit : count
+        encoder.drawPrimitives(type: .point, vertexStart: 0, vertexCount: drawCount)
     }
 
     func updateParticleBufferIfNeeded() {
         let particles = frameLoader.particles
         guard !particles.isEmpty else { return }
-        let byteCount = particles.count * MemoryLayout<Particle>.stride
-        guard let newBuffer = device.makeBuffer(bytes: particles, length: byteCount, options: [.storageModeShared]) else { return }
-        particleBuffer = newBuffer
 
-        if trailsEnabled {
-            trailBuffers.append(newBuffer)
-            trailCounts.append(frameLoader.latestPointCount)
-            while trailBuffers.count > trailLength {
-                trailBuffers.removeFirst()
-                trailCounts.removeFirst()
-            }
+        let currentMod = frameLoader.lastModificationDate
+        let sameUpload = particleBuffer != nil &&
+            liveParticleBuffer != nil &&
+            velocityParticleBuffer != nil &&
+            lastUploadedParticleCount == particles.count &&
+            lastUploadedModificationDate == currentMod
+        if sameUpload { return }
+
+        let byteCount = particles.count * MemoryLayout<Particle>.stride
+        guard let baseBuffer = device.makeBuffer(bytes: particles, length: byteCount, options: [.storageModeShared]),
+              let liveBuffer = device.makeBuffer(bytes: particles, length: byteCount, options: [.storageModeShared]) else { return }
+
+        var zeroVelocities = Array(repeating: Particle(position: SIMD3<Float>(0, 0, 0)), count: particles.count)
+        guard let velocityBuffer = device.makeBuffer(bytes: zeroVelocities, length: byteCount, options: [.storageModeShared]) else { return }
+
+        baseParticleBuffer = baseBuffer
+        liveParticleBuffer = liveBuffer
+        velocityParticleBuffer = velocityBuffer
+        particleBuffer = liveBuffer
+        lastUploadedParticleCount = particles.count
+        lastUploadedModificationDate = currentMod
+
+        // Trails are expensive at 99,966 geospatial points and destroy frame rate.
+        // Keep them opt-in after the GPU particle engine is stable.
+        trailBuffers.removeAll()
+        trailCounts.removeAll()
+
+        print("RMU v1.3F6 GPU particle buffers initialized: count=\(particles.count), compute=\(computePipelineState != nil), displayCap=\(geospatialDisplayParticleLimit)")
+    }
+
+    func resetGeospatialParticleState() {
+        updateParticleBufferIfNeeded()
+        guard let base = baseParticleBuffer,
+              let live = liveParticleBuffer,
+              let velocity = velocityParticleBuffer,
+              lastUploadedParticleCount > 0 else {
+            print("RMU v1.3F6 reset requested, but GPU particle buffers are not ready.")
+            return
         }
+
+        let byteCount = lastUploadedParticleCount * MemoryLayout<Particle>.stride
+        memcpy(live.contents(), base.contents(), byteCount)
+        memset(velocity.contents(), 0, byteCount)
+        fieldPhase = 0.0
+        clearTrails()
+        print("RMU v1.3F6 particle reset: live particles restored to crab-data seed positions; velocities cleared.")
+        hud?.updateText()
     }
 
     func printDiagnostics() {
-        print("Metal renderer | fps=\(String(format: "%.1f", currentFPS)) | points=\(frameLoader.latestPointCount) | simFrame=\(frameLoader.latestFrameIndex) | behavior=\(frameLoader.behaviorMode) | color=\(colorModeName) | trails=\(trailsEnabled) len=\(trailLength) | presentation=\(presentationModeEnabled) | FIELD_SYSTEM=\(fieldLayersEnabled ? "ON" : "OFF") | SELECTED=\(selectedFieldLayerName) | WEIGHT=\(String(format: "%.2f", selectedFieldLayerWeight)) | ENABLED=\(fieldLayerEnabled[selectedFieldLayerIndex]) | VCV=\(vcvDisplayStatus()) | SAFE=\(vcvSafeModeEnabled) | \(vcvChannelCompactSummary())")
+        print("Metal renderer | fps=\(String(format: "%.1f", currentFPS)) | points=\(frameLoader.latestPointCount) | simFrame=\(frameLoader.latestFrameIndex) | runtime=\(geospatialSimulationPaused == 0 ? "geospatial_live_running" : "geospatial_static_paused") | behaviorCode=\(behaviorEffectCode) | color=\(colorModeName) | trails=\(trailsEnabled) len=\(trailLength) | presentation=\(presentationModeEnabled) | FIELD_SYSTEM=\(fieldLayersEnabled ? "ON" : "OFF") | SELECTED=\(selectedFieldLayerName) | WEIGHT=\(String(format: "%.2f", selectedFieldLayerWeight)) | ENABLED=\(fieldLayerEnabled[selectedFieldLayerIndex]) | VCV=\(vcvDisplayStatus()) | SPEED=\(String(format: "%.2f", geospatialParticleSpeed)) | MASS=\(String(format: "%.2f", geospatialParticleMass)) | CAP=\(geospatialDisplayParticleLimit) | SAFE=\(vcvSafeModeEnabled) | \(vcvChannelCompactSummary())")
     }
 
     func increasePointSize() { pointSize = min(pointSize + 0.5, 12.0); hud?.updateText() }
@@ -1059,6 +1798,170 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
             vcvRawChannelValues[7] = Float(rawScene)
             vcvChannelValues[7] = Float(scene)
         }
+
+        // RMU_V1_3F5_SPEED_MASS_PARSE: /ch/9 particle speed and /ch/10 particle mass from bipolar Lorenz/VCV OSC.
+        func bipolarSpeedFromRaw(_ raw: Float) -> Float {
+            return max(-3.0, min((raw / 5.0) * 3.0, 3.0))
+        }
+        func massFromBipolarRaw(_ raw: Float) -> Float {
+            let n = max(0.0, min((raw + 5.0) / 10.0, 1.0))
+            return 0.20 + n * 4.80
+        }
+
+        var speedMappedOptional: Float? = nil
+        var speedRawOptional: Float? = nil
+        if let n = json["particle_speed"] as? NSNumber {
+            speedMappedOptional = Float(n.doubleValue)
+        }
+        if let n = json["particle_speed_raw"] as? NSNumber {
+            speedRawOptional = Float(n.doubleValue)
+        } else if let rawChannelValues = json["raw_channels"] as? [NSNumber], rawChannelValues.count >= 9 {
+            speedRawOptional = Float(rawChannelValues[8].doubleValue)
+        } else if let rawChannelValues = json["raw_channel_values"] as? [NSNumber], rawChannelValues.count >= 9 {
+            speedRawOptional = Float(rawChannelValues[8].doubleValue)
+        }
+        if speedMappedOptional == nil, let raw = speedRawOptional {
+            speedMappedOptional = bipolarSpeedFromRaw(raw)
+        }
+        if let speedMapped = speedMappedOptional {
+            let clamped = max(-3.0, min(speedMapped, 3.0))
+            if vcvRawChannelValues.count >= 9 { vcvRawChannelValues[8] = speedRawOptional ?? clamped }
+            if vcvChannelValues.count >= 9 { vcvChannelValues[8] = clamped }
+            if externalDetected && vcvChannelEnabled.count >= 9 && vcvChannelEnabled[8] {
+                geospatialParticleSpeed = smoothValue(current: geospatialParticleSpeed, target: clamped, amount: vcvSmoothingAmount)
+            }
+        }
+
+        var massMappedOptional: Float? = nil
+        var massRawOptional: Float? = nil
+        if let n = json["particle_mass"] as? NSNumber {
+            massMappedOptional = Float(n.doubleValue)
+        }
+        if let n = json["particle_mass_raw"] as? NSNumber {
+            massRawOptional = Float(n.doubleValue)
+        } else if let rawChannelValues = json["raw_channels"] as? [NSNumber], rawChannelValues.count >= 10 {
+            massRawOptional = Float(rawChannelValues[9].doubleValue)
+        } else if let rawChannelValues = json["raw_channel_values"] as? [NSNumber], rawChannelValues.count >= 10 {
+            massRawOptional = Float(rawChannelValues[9].doubleValue)
+        }
+        if massMappedOptional == nil, let raw = massRawOptional {
+            massMappedOptional = massFromBipolarRaw(raw)
+        }
+        if let massMapped = massMappedOptional {
+            let clamped = max(0.20, min(massMapped, 5.00))
+            if vcvRawChannelValues.count >= 10 { vcvRawChannelValues[9] = massRawOptional ?? clamped }
+            if vcvChannelValues.count >= 10 { vcvChannelValues[9] = clamped }
+            if externalDetected && vcvChannelEnabled.count >= 10 && vcvChannelEnabled[9] {
+                geospatialParticleMass = smoothValue(current: geospatialParticleMass, target: clamped, amount: vcvSmoothingAmount)
+            }
+        }
+    }
+
+    func datasetCouplingStateURL() -> URL {
+        URL(fileURLWithPath: projectRoot)
+            .appendingPathComponent("output")
+            .appendingPathComponent("dataset_coupling_state.json")
+    }
+
+    func clampDataWeight(_ value: Float) -> Float {
+        max(0.0, min(value, 3.0))
+    }
+
+    func loadDatasetCouplingIfNeeded() {
+        let now = Date().timeIntervalSince1970
+        if now - dataCouplingLastReadTime < 0.20 { return }
+        dataCouplingLastReadTime = now
+
+        let url = datasetCouplingStateURL()
+        guard let data = try? Data(contentsOf: url),
+              let json = try? JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] else {
+            dataCouplingLoaded = false
+            dataCouplingFallbackActive = true
+            dataCouplingStatus = "missing coupling state"
+            dataCouplingFallbackReason = "output/dataset_coupling_state.json not readable"
+            dataCouplingSummary = "dataset coupling missing"
+            return
+        }
+
+        dataCouplingLoaded = (json["loaded"] as? Bool) ?? false
+        dataCouplingFallbackActive = (json["fallback_active"] as? Bool) ?? true
+        dataCouplingStatus = (json["status"] as? String) ?? (dataCouplingLoaded ? "loaded" : "fallback")
+        dataCouplingFallbackReason = (json["fallback_reason"] as? String) ?? "none"
+        dataCouplingSource = (json["source"] as? String) ?? "dataset_coupling_state.json"
+        dataCouplingSummary = (json["summary"] as? String) ?? "dataset coupling active"
+
+        if let gainNumber = json["gain"] as? NSNumber {
+            dataCouplingGain = Float(gainNumber.doubleValue)
+        }
+        if let smoothNumber = json["smooth"] as? NSNumber {
+            dataCouplingSmooth = max(0.01, min(Float(smoothNumber.doubleValue), 1.0))
+        }
+        if let values = json["values"] as? [String: Any] {
+            for (key, value) in values {
+                if let n = value as? NSNumber { dataCouplingValues[key] = Float(n.doubleValue) }
+            }
+        }
+        if let targets = json["field_layer_targets"] as? [NSNumber], targets.count == fieldLayerWeights.count {
+            dataCouplingTargets = targets.map { clampDataWeight(Float($0.doubleValue)) }
+        }
+
+        if dataCouplingEnabled && dataCouplingLoaded && !dataCouplingFallbackActive {
+            applyDatasetCouplingTargets()
+        }
+    }
+
+    func applyDatasetCouplingTargets() {
+        guard dataCouplingTargets.count == fieldLayerWeights.count else { return }
+        for i in 0..<fieldLayerWeights.count {
+            let target = clampDataWeight(dataCouplingTargets[i] * max(0.0, dataCouplingGain))
+            fieldLayerWeights[i] = smoothValue(current: fieldLayerWeights[i], target: target, amount: dataCouplingSmooth)
+        }
+        if (dataCouplingValues["temperature_drive"] ?? 0.0) > 0.05 {
+            fieldLayerEnabled[3] = true
+        }
+        lastVisualStateMessage = "dataset coupling active"
+    }
+
+    func toggleDataCoupling() {
+        dataCouplingEnabled.toggle()
+        print("Dataset coupling: \(dataCouplingEnabled ? "ON" : "OFF")")
+        hud?.updateText()
+    }
+
+    func cycleDataCouplingGain() {
+        let options: [Float] = [0.25, 0.50, 1.00, 1.50, 2.00]
+        let currentIndex = options.enumerated().min(by: { abs($0.element - dataCouplingGain) < abs($1.element - dataCouplingGain) })?.offset ?? 2
+        let next = (currentIndex + 1) % options.count
+        dataCouplingGain = options[next]
+        print("Dataset coupling gain: \(String(format: "%.2f", dataCouplingGain))")
+        hud?.updateText()
+    }
+
+    func dataCouplingPanelSummary() -> String {
+        let c = dataCouplingValues["curvature_drive"] ?? 0.0
+        let temp = dataCouplingValues["temperature_drive"] ?? 0.0
+        let h = dataCouplingValues["higgs_drive"] ?? 0.0
+        let p = dataCouplingValues["probability_drive"] ?? 0.0
+        let v = dataCouplingValues["vertical_drive"] ?? 0.0
+        return "COUPLING: \(dataCouplingEnabled ? "ON" : "OFF")  loaded \(dataCouplingLoaded)  fallback \(dataCouplingFallbackActive)  gain \(String(format: "%.2f", dataCouplingGain))  smooth \(String(format: "%.2f", dataCouplingSmooth)) | drive C \(String(format: "%.3f", c)) T \(String(format: "%.3f", temp)) H \(String(format: "%.3f", h)) P \(String(format: "%.3f", p)) Y \(String(format: "%.3f", v))"
+    }
+
+    func datasetCouplingControlState() -> [String: Any] {
+        return [
+            "version": "1.2A",
+            "enabled": dataCouplingEnabled,
+            "loaded": dataCouplingLoaded,
+            "fallback_active": dataCouplingFallbackActive,
+            "fallback_reason": dataCouplingFallbackReason,
+            "status": dataCouplingStatus,
+            "source": dataCouplingSource,
+            "gain": dataCouplingGain,
+            "smooth": dataCouplingSmooth,
+            "summary": dataCouplingSummary,
+            "values": dataCouplingValues,
+            "field_layer_targets": dataCouplingTargets,
+            "applied_field_layer_weights": fieldLayerWeights
+        ]
     }
 
     func toggleVCVFieldControl() {
@@ -1070,7 +1973,7 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
 
     func visualStateDictionary(name: String, slot: Int? = nil) -> [String: Any] {
         return [
-            "version": "0.9B",
+            "version": "1.2B",
             "name": name,
             "slot": slot as Any,
             "created_unix": Date().timeIntervalSince1970,
@@ -1281,6 +2184,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     var alwaysOnTop = false
     var projectRoot = "/Users/Joe/Documents/RealMathUniverse"
     var currentRespawn = false
+    var currentBehaviorMode = "stable_orbit_cloud"
+    var behaviorSource = "renderer_manual"
+    var behaviorLock = false
     var burstCount = 5
     var burstInterval: TimeInterval = 0.40
     var cleanCaptureDelay: TimeInterval = 0.08
@@ -1339,7 +2245,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         let window = KeyCatcherWindow(contentRect: frame, styleMask: styleMask, backing: .buffered, defer: false)
-        window.title = "RealMathUniverse Metal Renderer v0.9B"
+        window.title = "RealMathUniverse Metal Renderer v1.3F6"
         window.center()
         window.isReleasedWhenClosed = false
         if alwaysOnTop { window.level = .floating }
@@ -1362,6 +2268,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard let renderer = MetalRenderer(view: metalView, projectRoot: projectRoot) else {
             fatalError("Failed to create Metal renderer.")
         }
+        // RMU_V1_3D2_INITIAL_RENDERER_GEOSTATE
+        runtimeMode = canonicalRuntimeMode()
+        renderer.geospatialSimulationPaused = simulationPaused ? 1 : 0
+        renderer.behaviorEffectCode = behaviorEffectCode(for: currentBehaviorMode)
+        writeRuntimeState(source: "startup")
 
         metalView.delegate = renderer
         container.addSubview(metalView)
@@ -1379,11 +2290,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         window.makeKeyAndOrderFront(nil)
         window.orderFrontRegardless()
 
-        print("RealMathUniverse Metal Renderer v0.9B")
+        print("RealMathUniverse Metal Renderer v1.3F6")
         print("Project root: \(projectRoot)")
-        print("Field layers: F toggles system, TAB selects layer, SPACE toggles selected layer, / and \\ adjust selected weight")
+        print("Field layers: F toggles system, TAB selects layer, SHIFT+SPACE toggles selected layer, / and \\ adjust selected weight")
         print("Session ID: \(sessionID)")
-        print("Keys: S shot | J clean | K burst | L clean burst | Y presentation | F field layers | TAB select field | SPACE toggle field | /\\ weight | P trails | ESC quit")
+        print("Keys: S shot | J clean | K burst | L clean burst | Y presentation | F field layers | TAB select field | SHIFT+SPACE toggle field | /\\ weight | P trails | ESC quit")
         if borderlessWindow { print("Window mode: borderless") }
         if hiddenTitlebar { print("Window mode: hidden titlebar") }
 
@@ -1410,7 +2321,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             renderer?.cycleSelectedFieldLayer()
             return
         case 49:
-            renderer?.toggleSelectedFieldLayer()
+            // v1.3D8: SPACE toggles geospatial run/pause. SHIFT+SPACE keeps old field-layer toggle.
+            if event.modifierFlags.contains(.shift) {
+                renderer?.toggleSelectedFieldLayer()
+            } else {
+                toggleSimulationPause()
+            }
             return
         case 123: renderer?.pan(dx: -panStep, dy: 0)
         case 124: renderer?.pan(dx: panStep, dy: 0)
@@ -1452,6 +2368,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
 
+        if characters == "m", shiftDown {
+            hud?.toggleBottomPanelMode()
+            writeControlState(extra: ["bottom_panel_mode": hud?.bottomPanelMode ?? "unknown"])
+            return
+        }
+
         if characters == "d", shiftDown {
             renderer?.toggleAutoCamera()
             return
@@ -1469,6 +2391,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         if characters == "c", shiftDown {
             renderer?.toggleVCVSafeMode()
+            return
+        }
+
+        if characters == "b", shiftDown {
+            renderer?.toggleDataCoupling()
+            writeControlState(extra: ["dataset_coupling_enabled": renderer?.dataCouplingEnabled ?? false])
+            return
+        }
+
+        if characters == "g", shiftDown {
+            renderer?.cycleDataCouplingGain()
+            writeControlState(extra: ["dataset_coupling_gain": renderer?.dataCouplingGain ?? 1.0])
+            return
+        }
+
+        if characters == "r", shiftDown {
+            renderer?.resetGeospatialParticleState()
+            writeRuntimeState(source: "particle_reset")
+            writeControlState(extra: [
+                "particle_reset": "manual_shift_r",
+                "particle_reset_unix": Date().timeIntervalSince1970,
+                "runtime_mode": geospatialRuntimeModeString(),
+                "particle_speed": renderer?.geospatialParticleSpeed ?? 1.0,
+                "particle_mass": renderer?.geospatialParticleMass ?? 1.0
+            ])
             return
         }
 
@@ -1533,6 +2480,56 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    func datasetStateURL() -> URL {
+        URL(fileURLWithPath: projectRoot).appendingPathComponent("output").appendingPathComponent("dataset_state.json")
+    }
+
+    func readDatasetStateForControl() -> [String: Any]? {
+        let url = datasetStateURL()
+        guard let data = try? Data(contentsOf: url),
+              let object = try? JSONSerialization.jsonObject(with: data, options: []),
+              let json = object as? [String: Any] else { return nil }
+        return json
+    }
+
+    func behaviorStateURL() -> URL {
+        URL(fileURLWithPath: projectRoot).appendingPathComponent("output").appendingPathComponent("behavior_state.json")
+    }
+
+    func readBehaviorStateForControl() -> [String: Any]? {
+        let url = behaviorStateURL()
+        guard let data = try? Data(contentsOf: url),
+              let object = try? JSONSerialization.jsonObject(with: data, options: []),
+              let json = object as? [String: Any] else { return nil }
+        return json
+    }
+
+
+    func writeBehaviorState(behavior: String, source: String = "renderer_manual") {
+        currentBehaviorMode = behavior
+        behaviorSource = source
+        behaviorLock = false
+        let url = behaviorStateURL()
+        let now = Date().timeIntervalSince1970
+        let obj: [String: Any] = [
+            "version": "1.3F6",
+            "behavior_mode": behavior,
+            "behavior_source": source,
+            "behavior_lock": false,
+            "behavior_timestamp_unix": now,
+            "collapse_behavior": [
+                "behavior_mode": behavior,
+                "source": source,
+                "locked": false,
+                "timestamp_unix": now
+            ],
+            "updated_by": "metal_renderer_v1_3D11_behavior_state",
+            "timestamp_unix": now
+        ]
+        writeJSON(obj, to: url)
+    }
+
+
     func controlStateURL() -> URL {
         URL(fileURLWithPath: projectRoot).appendingPathComponent("output").appendingPathComponent("control_state.json")
     }
@@ -1542,13 +2539,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if FileManager.default.fileExists(atPath: url.path) { return }
         try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
         writeJSON([
-            "behavior_mode": "stable_orbit_cloud",
+            "behavior_mode": currentBehaviorMode,
+            "behavior_source": behaviorSource,
+            "behavior_lock": behaviorLock,
+            "behavior_timestamp_unix": Date().timeIntervalSince1970,
+            "collapse_behavior": [
+                "behavior_mode": currentBehaviorMode,
+                "source": behaviorSource,
+                "locked": behaviorLock
+            ],
             "respawn_on_capture": false,
             "render_sample_count": 25000,
             "trails_enabled": true,
             "trail_length": 12,
             "grid_enabled": false,
-            "updated_by": "metal_renderer_v0_9B1",
+            "updated_by": "metal_renderer_v1_3D11_default_control_state",
             "timestamp_unix": Date().timeIntervalSince1970
         ], to: url)
     }
@@ -1644,14 +2649,173 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         hud?.updateText()
     }
 
+
+    func behaviorEffectCode(for behavior: String) -> Int32 {
+        switch behavior {
+        case "stable_orbit_cloud": return 1
+        case "black_hole_capture": return 2
+        case "accretion_disk": return 3
+        case "field_pressure_bounce": return 4
+        case "infinite_collapse": return 5
+        default: return 1
+        }
+    }
+
+    func runtimeStateURL() -> URL {
+        URL(fileURLWithPath: projectRoot).appendingPathComponent("output").appendingPathComponent("runtime_state.json")
+    }
+
+    func canonicalRuntimeMode() -> String {
+        if !geospatialEnabled { return "standard_simulation" }
+        return simulationPaused ? "geospatial_static_paused" : "geospatial_live_running"
+    }
+
+    func geospatialRuntimeObject(source: String = "renderer") -> [String: Any] {
+        runtimeMode = canonicalRuntimeMode()
+        let now = Date().timeIntervalSince1970
+        return [
+            "version": "1.3F6",
+            "runtime_mode": runtimeMode,
+            "geospatial_enabled": geospatialEnabled,
+            "simulation_paused": simulationPaused,
+            "physics_armed": !simulationPaused,
+            "spacebar_mode": "run_pause_geospatial",
+            "particle_speed": renderer?.geospatialParticleSpeed ?? 1.0,
+            "particle_mass": renderer?.geospatialParticleMass ?? 1.0,
+            "particle_source_authority": "renderer_geospatial_authority",
+            "particle_source_mode": "crab_nav_csv_particles",
+            "particle_source_csv": "/Users/Joe/Documents/RealMathUniverse/data/raw/merged_navdata.csv",
+            "behavior_mode": currentBehaviorMode,
+            "behavior_lock": behaviorLock,
+            "behavior_source": behaviorSource,
+            "respawn_on_capture": currentRespawn,
+            "updated_by": "metal_renderer_v1_3D7_runtime_authority",
+            "source": source,
+            "timestamp_unix": now
+        ]
+    }
+
+
+
+
+    func geospatialRuntimeStateURL() -> URL {
+        URL(fileURLWithPath: projectRoot).appendingPathComponent("output").appendingPathComponent("geospatial_runtime_state.json")
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    func readRuntimePausedFromFile() -> Bool {
+        let url = runtimeStateURL()
+        guard let data = try? Data(contentsOf: url),
+              let object = try? JSONSerialization.jsonObject(with: data, options: []),
+              let json = object as? [String: Any] else {
+            return simulationPaused
+        }
+        if let paused = json["simulation_paused"] as? Bool { return paused }
+        if let paused = json["simulation_paused"] as? NSNumber { return paused.boolValue }
+        if let paused = json["simulation_paused"] as? String {
+            let lowered = paused.lowercased()
+            if ["true", "1", "yes", "paused"].contains(lowered) { return true }
+            if ["false", "0", "no", "running"].contains(lowered) { return false }
+        }
+        return simulationPaused
+    }
+
+    func geospatialRuntimeModeString() -> String {
+        return simulationPaused ? "geospatial_static_paused" : "geospatial_live_running"
+    }
+
+    func writeRuntimeState(source: String = "renderer") {
+        let now = Date().timeIntervalSince1970
+        let obj: [String: Any] = [
+            "version": "1.3F6",
+            "runtime_mode": geospatialRuntimeModeString(),
+            "geospatial_enabled": geospatialEnabled,
+            "simulation_paused": simulationPaused,
+            "physics_armed": !simulationPaused,
+            "spacebar_mode": "run_pause_geospatial",
+            "particle_speed": renderer?.geospatialParticleSpeed ?? 1.0,
+            "particle_mass": renderer?.geospatialParticleMass ?? 1.0,
+            "particle_source_authority": "renderer_geospatial_authority",
+            "particle_source_mode": "crab_nav_csv_particles",
+            "particle_source_csv": "/Users/Joe/Documents/RealMathUniverse/data/raw/merged_navdata.csv",
+            "behavior_mode": currentBehaviorMode,
+            "behavior_lock": false,
+            "behavior_source": "renderer_manual",
+            "respawn_on_capture": currentRespawn,
+            "updated_by": "metal_renderer_v1_3F6_particle_reset_runtime",
+            "source": source,
+            "timestamp_unix": now
+        ]
+        writeJSON(obj, to: runtimeStateURL())
+        writeJSON(obj, to: geospatialRuntimeStateURL())
+    }
+
+
+
+    func toggleSimulationPause() {
+        let now = Date().timeIntervalSince1970
+        if now - lastGeospatialSpaceToggleUnix < 0.35 {
+            print("SPACE ignored by v1.3D11 debounce")
+            return
+        }
+        lastGeospatialSpaceToggleUnix = now
+
+        let currentlyPaused = readRuntimePausedFromFile()
+        simulationPaused = !currentlyPaused
+        behaviorLock = false
+
+        renderer?.geospatialSimulationPaused = simulationPaused ? 1 : 0
+        if !simulationPaused { renderer?.fieldPhase = 0.0 }
+        renderer?.behaviorEffectCode = behaviorEffectCode(for: currentBehaviorMode)
+
+        writeRuntimeState(source: "spacebar")
+        writeControlState(extra: [
+            "runtime_mode": geospatialRuntimeModeString(),
+            "geospatial_enabled": geospatialEnabled,
+            "simulation_paused": simulationPaused,
+            "physics_armed": !simulationPaused,
+            "particle_source_authority": "renderer_geospatial_authority",
+            "particle_source_mode": "crab_nav_csv_particles",
+            "spacebar_mode": "run_pause_geospatial",
+            "behavior_lock": false,
+            "updated_by_spacebar": "metal_renderer_v1_3F6_particle_reset_runtime"
+        ])
+        print("Geospatial runtime: \(simulationPaused ? "PAUSED" : "RUNNING") behavior=\(currentBehaviorMode)")
+        hud?.updateText()
+    }
+
+
     func writePreset(behavior: String, respawn: Bool, pointSize: Float, radiusMultiplier: Float, colorMode: Int32) {
+        // RMU_V1_3D2_WRITEPRESET_BEHAVIOR_EFFECT
+        currentBehaviorMode = behavior
         currentRespawn = respawn
+        renderer?.behaviorEffectCode = behaviorEffectCode(for: behavior)
+        renderer?.fieldPhase = 0.0
+        simulationPaused = readRuntimePausedFromFile()
+        renderer?.geospatialSimulationPaused = simulationPaused ? 1 : 0
+        writeRuntimeState(source: "behavior_preset")
         renderer?.pointSize = pointSize
         renderer?.setColor(colorMode)
         if let base = renderer?.frameLoader.worldRadius {
             renderer?.manualWorldRadius = base * radiusMultiplier
         }
         applyFieldRecipeForBehavior(behavior)
+        writeBehaviorState(behavior: behavior, source: "renderer_manual")
         writeControlState(behavior: behavior)
     }
 
@@ -1736,6 +2900,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         print("Sample preset requested: \(count)")
     }
 
+
     func writeControlState(behavior: String? = nil, respawnOnly: Bool = false, extra: [String: Any] = [:]) {
         var state: [String: Any] = [:]
         let url = controlStateURL()
@@ -1745,8 +2910,40 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             state = existing
         }
 
-        if let behavior = behavior { state["behavior_mode"] = behavior }
+        if let behavior = behavior {
+            currentBehaviorMode = behavior
+            behaviorSource = "renderer_manual"
+            // v1.3D7: control-state behavior selection should not hard-lock runtime behavior.
+            behaviorLock = false
+        } else if let behaviorState = readBehaviorStateForControl(),
+                  let existingBehavior = behaviorState["behavior_mode"] as? String,
+                  !existingBehavior.isEmpty {
+            currentBehaviorMode = existingBehavior
+            behaviorSource = behaviorState["behavior_source"] as? String ?? behaviorSource
+            behaviorLock = behaviorState["behavior_lock"] as? Bool ?? behaviorLock
+        } else if let existingBehavior = state["behavior_mode"] as? String,
+                  !existingBehavior.isEmpty {
+            currentBehaviorMode = existingBehavior
+        }
+
+        state["behavior_mode"] = currentBehaviorMode
+        state["behavior_source"] = behaviorSource
+        state["behavior_lock"] = behaviorLock
+        state["behavior_timestamp_unix"] = Date().timeIntervalSince1970
+        state["collapse_behavior"] = [
+            "behavior_mode": currentBehaviorMode,
+            "source": behaviorSource,
+            "locked": behaviorLock,
+            "timestamp_unix": Date().timeIntervalSince1970
+        ]
         state["respawn_on_capture"] = currentRespawn
+        state["runtime_mode"] = canonicalRuntimeMode()
+        state["geospatial_enabled"] = geospatialEnabled
+        state["simulation_paused"] = simulationPaused
+        state["physics_armed"] = !simulationPaused
+        state["spacebar_mode"] = "run_pause_geospatial"
+        state["particle_source_authority"] = "renderer_geospatial_authority"
+        state["particle_source_mode"] = "crab_nav_csv_particles"
         for (key, value) in extra { state[key] = value }
         state["renderer_scene"] = renderer?.activeScenePresetName ?? "manual"
         var vcvState: [String: Any] = [:]
@@ -1764,10 +2961,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         vcvState["raw_channel_values"] = renderer?.vcvRawChannelValues ?? []
         vcvState["channel_enabled"] = renderer?.vcvChannelEnabled ?? []
         state["vcv"] = vcvState
-        state["updated_by"] = "metal_renderer_v0_9B1"
+        if let datasetState = readDatasetStateForControl() {
+            state["dataset"] = datasetState
+            if let dsState = datasetState["state"] as? [String: Any] {
+                state["dataset_values"] = dsState
+            }
+        } else {
+            state["dataset"] = [
+                "loaded": false,
+                "fallback_active": true,
+                "fallback_reason": "dataset_state.json not readable by renderer"
+            ]
+        }
+        if let renderer = renderer {
+            state["dataset_coupling"] = renderer.datasetCouplingControlState()
+        }
+        state["bottom_panel_mode"] = hud?.bottomPanelMode ?? "field"
+        state["particle_speed"] = renderer?.geospatialParticleSpeed ?? 1.0
+        state["particle_mass"] = renderer?.geospatialParticleMass ?? 1.0
+        state["display_particle_limit"] = renderer?.geospatialDisplayParticleLimit ?? 70000
+        state["updated_by"] = "metal_renderer_v1_3F6_control_state"
         state["timestamp_unix"] = Date().timeIntervalSince1970
         writeJSON(state, to: url)
-        print("Control state written by metal_renderer_v0_9B1: \(state)")
+        print("Control state written by metal_renderer_v1_3F6_control_state: \(state)")
         hud?.updateText()
     }
 
@@ -1804,11 +3020,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func manifestURL() -> URL {
-        manifestDir().appendingPathComponent("RealMathUniverse_v0_9B_capture_manifest_\(sessionID).json")
+        manifestDir().appendingPathComponent("RealMathUniverse_v1_2B2_capture_manifest_\(sessionID).json")
     }
 
     func markdownSummaryURL() -> URL {
-        manifestDir().appendingPathComponent("RealMathUniverse_v0_9B_session_summary_\(sessionID).md")
+        manifestDir().appendingPathComponent("RealMathUniverse_v1_2B2_session_summary_\(sessionID).md")
     }
 
     func sanitized(_ value: String) -> String {
@@ -1894,7 +3110,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 return
             }
 
-            let behavior = self.sanitized(self.renderer?.frameLoader.behaviorMode ?? "unknown")
+            let behavior = self.sanitized(self.canonicalRuntimeMode())
             let color = self.sanitized(self.renderer?.colorModeName ?? "classic")
             let sample = self.sampleLabel(self.renderer?.frameLoader.renderSampleCount ?? 0)
             let captureType = clean ? "clean" : "window"
@@ -1909,7 +3125,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 burstSuffix = ""
             }
 
-            let fileName = "RealMathUniverse_v0_9B_\(behavior)_\(color)_\(sample)_\(captureType)\(burstSuffix)_\(stamp)_UTC.png"
+            let fileName = "RealMathUniverse_v1_3F6_\(behavior)_\(color)_\(sample)_\(captureType)\(burstSuffix)_\(stamp)_UTC.png"
             let url = self.screenshotsDir().appendingPathComponent(fileName)
             guard let destination = CGImageDestinationCreateWithURL(url as CFURL, "public.png" as CFString, 1, nil) else {
                 print("Screenshot failed: could not create destination.")
@@ -1975,6 +3191,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             "timestamp_unix": Date().timeIntervalSince1970,
             "timestamp_utc": iso.string(from: Date()),
             "filename": fileURL.lastPathComponent,
+            "runtime_mode": canonicalRuntimeMode(),
+            "particle_speed": renderer?.geospatialParticleSpeed ?? 1.0,
+            "particle_mass": renderer?.geospatialParticleMass ?? 1.0,
             "relative_path": "output/screenshots/metal/\(sessionID)/\(fileURL.lastPathComponent)",
             "behavior_mode": renderer?.frameLoader.behaviorMode ?? "unknown",
             "color_mode": renderer?.colorModeName ?? "unknown",
@@ -2021,7 +3240,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         captures.append(entry)
         manifest["session_id"] = sessionID
-        manifest["renderer_version"] = "v0.9B"
+        manifest["renderer_version"] = "v1.2B3"
         manifest["project_root"] = projectRoot
         manifest["window_mode"] = currentWindowModeLabel()
         manifest["captures"] = captures
@@ -2033,7 +3252,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func writeSessionSummaryMarkdown(captures: [[String: Any]], lastUpdatedUTC: String) {
         var lines: [String] = []
-        lines.append("# RealMathUniverse v0.9B Session Summary")
+        lines.append("# RealMathUniverse v1.2B3 Session Summary")
         lines.append("")
         lines.append("- Session ID: \(sessionID)")
         lines.append("- Last updated UTC: \(lastUpdatedUTC)")

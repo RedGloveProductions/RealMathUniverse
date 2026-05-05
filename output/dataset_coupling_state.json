@@ -1,0 +1,37 @@
+{
+  "enabled": true,
+  "fallback_active": false,
+  "fallback_reason": "none",
+  "field_layer_targets": [
+    0.25,
+    0.7152181636807571,
+    1.014276900725552,
+    0.17353274059810725,
+    0.28500000000000003
+  ],
+  "gain": 1.0,
+  "loaded": true,
+  "row_count": 99966,
+  "sample_index": 1513,
+  "smooth": 0.15,
+  "source": "/Users/Joe/Documents/RealMathUniverse/output/dataset_state.json",
+  "source_csv": "/Users/Joe/Documents/RealMathUniverse/data/raw/merged_navdata.csv",
+  "status": "active",
+  "summary": "dataset coupling active | C=0.000 T=0.062 H=0.059 P=0.050 Y=0.731",
+  "target_names": [
+    "radial",
+    "orbital",
+    "vertical",
+    "turbulence",
+    "shell"
+  ],
+  "timestamp_unix": 1777967982.5767,
+  "values": {
+    "curvature_drive": 0.0,
+    "higgs_drive": 0.059289239709779167,
+    "probability_drive": 0.05,
+    "temperature_drive": 0.061766370299053616,
+    "vertical_drive": 0.7314215205804416
+  },
+  "version": "1.2A"
+}

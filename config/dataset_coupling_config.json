@@ -1,0 +1,59 @@
+{
+  "version": "1.2A",
+  "enabled": true,
+  "mode": "dataset_to_field_layers",
+  "gain": 1.0,
+  "smooth": 0.15,
+  "write_control_state": true,
+  "input_path": "output/dataset_state.json",
+  "output_path": "output/dataset_coupling_state.json",
+  "target": {
+    "field_layer_weights": true,
+    "control_state_dataset_coupling_block": true
+  },
+  "fallback": {
+    "enabled": true,
+    "reason": "dataset unavailable or disabled",
+    "values": {
+      "curvature_drive": 0.0,
+      "temperature_drive": 0.25,
+      "higgs_drive": 0.35,
+      "probability_drive": 0.0,
+      "vertical_drive": 0.0
+    },
+    "field_layer_targets": [0.25, 1.0, 0.1, 0.05, 0.2]
+  },
+  "mapping": {
+    "radial_from_curvature": {
+      "base": 0.25,
+      "scale": 1.4,
+      "clamp_min": 0.0,
+      "clamp_max": 3.0
+    },
+    "orbital_from_higgs_lambda": {
+      "base": 0.65,
+      "scale": 1.1,
+      "clamp_min": 0.0,
+      "clamp_max": 3.0
+    },
+    "vertical_from_depth_y": {
+      "base": 0.10,
+      "scale": 1.25,
+      "clamp_min": 0.0,
+      "clamp_max": 3.0
+    },
+    "turbulence_from_temperature": {
+      "base": 0.05,
+      "scale": 2.0,
+      "clamp_min": 0.0,
+      "clamp_max": 3.0
+    },
+    "shell_from_probability": {
+      "base": 0.20,
+      "scale": 1.7,
+      "clamp_min": 0.0,
+      "clamp_max": 3.0
+    }
+  },
+  "notes": "v1.2A couples calibrated dataset_state.json values into safe field-layer drive targets. VCV /ch/1-/ch/8 is not changed."
+}

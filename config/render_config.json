@@ -1,140 +1,141 @@
 {
   "render": {
-    "enabled": true,
     "backend": "metal_export",
-    "windowed": true,
-    "width": 1920,
-    "height": 1080,
-    "fullscreen": false,
-    "clean_capture_before_hud": true,
-    "hud_enabled": true,
-    "target_render_fps": 60,
-    "render_sample_count": 25000,
-    "render_world_radius": 6.0,
-    "point_radius": 2,
-    "metal_export": {
-      "output_dir": "output/metal_live",
-      "binary_filename": "particles_xyz_f32.bin",
-      "metadata_filename": "metadata.json",
-      "export_every_n_frames": 1
-    },
     "camera": {
-      "pan_step": 0.18,
-      "zoom_step": 1.12,
-      "rotation_step_degrees": 4.0,
-      "default_rotation_degrees": 0.0,
       "default_pan_x": 0.0,
-      "default_pan_y": 0.0
+      "default_pan_y": 0.0,
+      "default_rotation_degrees": 0.0,
+      "pan_step": 0.18,
+      "rotation_step_degrees": 4.0,
+      "zoom_step": 1.12
     },
+    "clean_capture_before_hud": true,
     "color_modes": {
-      "default": "classic",
       "available": [
         "classic",
         "depth",
         "radial",
         "behavior",
         "thermal"
-      ]
+      ],
+      "default": "classic"
     },
+    "curvature_probability_overlays": {
+      "controls": {
+        "G": "toggle grid + probability halo",
+        "O": "toggle center marker + horizon + curvature rings"
+      },
+      "curvature_ring_count": 7,
+      "curvature_rings": true,
+      "probability_halo": true,
+      "probability_halo_points": 4200,
+      "version": "0.9B"
+    },
+    "enabled": true,
+    "field_layers": {
+      "default_selected": "orbital",
+      "enabled": true,
+      "recipes": {
+        "accretion_disk": {
+          "orbital": 1.1,
+          "radial": 0.35,
+          "shell": 0.3,
+          "turbulence": 0.1,
+          "vertical": 0.25
+        },
+        "black_hole_capture": {
+          "orbital": 0.75,
+          "radial": 0.95,
+          "shell": 0.4,
+          "turbulence": 0.08,
+          "vertical": 0.2
+        },
+        "field_pressure_bounce": {
+          "orbital": 0.35,
+          "radial": 0.55,
+          "shell": 0.15,
+          "turbulence": 0.3,
+          "vertical": 0.45
+        },
+        "infinite_collapse": {
+          "orbital": 0.4,
+          "radial": 1.15,
+          "shell": 0.45,
+          "turbulence": 0.15,
+          "vertical": 0.12
+        },
+        "stable_orbit_cloud": {
+          "orbital": 1.0,
+          "radial": 0.25,
+          "shell": 0.2,
+          "turbulence": 0.05,
+          "vertical": 0.1
+        }
+      }
+    },
+    "fullscreen": false,
+    "height": 1080,
+    "hud_enabled": true,
+    "hud_overlays": {
+      "controls_overlay_enabled": true,
+      "controls_width": 580,
+      "enabled": true,
+      "material": "hudWindow",
+      "opacity": 0.78,
+      "panel_margin": 18,
+      "panel_top": 18,
+      "stats_overlay_enabled": true,
+      "stats_width": 430
+    },
+    "metal_export": {
+      "binary_filename": "particles_xyz_f32.bin",
+      "export_every_n_frames": 1,
+      "metadata_filename": "metadata.json",
+      "output_dir": "output/metal_live"
+    },
+    "notes": "v0.6A adds Metal-side particle trails, center marker, horizon ring, grid toggle, sample preset controls, and compact HUD mode.",
+    "point_radius": 2,
+    "render_sample_count": 25000,
+    "render_world_radius": 6.0,
+    "target_render_fps": 60,
+    "v1_3B_note": "In geospatial_crab_field mode MetalFrameExporter renders all solver particles regardless of this preview value.",
     "visual_quality": {
-      "trails_enabled": true,
-      "trail_length": 12,
-      "trail_alpha_floor": 0.08,
-      "trail_alpha_ceiling": 0.42,
-      "grid_enabled": false,
       "center_marker_enabled": true,
-      "horizon_ring_enabled": true,
       "compact_hud_enabled": false,
+      "grid_enabled": false,
+      "horizon_ring_enabled": true,
       "sample_presets": [
         25000,
         50000,
         100000
-      ]
-    },
-    "hud_overlays": {
-      "enabled": true,
-      "stats_overlay_enabled": true,
-      "controls_overlay_enabled": true,
-      "material": "hudWindow",
-      "opacity": 0.78,
-      "stats_width": 430,
-      "controls_width": 580,
-      "panel_margin": 18,
-      "panel_top": 18
-    },
-    "notes": "v0.6A adds Metal-side particle trails, center marker, horizon ring, grid toggle, sample preset controls, and compact HUD mode.",
-    "field_layers": {
-      "enabled": true,
-      "default_selected": "orbital",
-      "recipes": {
-        "stable_orbit_cloud": {
-          "radial": 0.25,
-          "orbital": 1.0,
-          "vertical": 0.1,
-          "turbulence": 0.05,
-          "shell": 0.2
-        },
-        "black_hole_capture": {
-          "radial": 0.95,
-          "orbital": 0.75,
-          "vertical": 0.2,
-          "turbulence": 0.08,
-          "shell": 0.4
-        },
-        "accretion_disk": {
-          "radial": 0.35,
-          "orbital": 1.1,
-          "vertical": 0.25,
-          "turbulence": 0.1,
-          "shell": 0.3
-        },
-        "field_pressure_bounce": {
-          "radial": 0.55,
-          "orbital": 0.35,
-          "vertical": 0.45,
-          "turbulence": 0.3,
-          "shell": 0.15
-        },
-        "infinite_collapse": {
-          "radial": 1.15,
-          "orbital": 0.4,
-          "vertical": 0.12,
-          "turbulence": 0.15,
-          "shell": 0.45
-        }
-      }
-    },
-    "curvature_probability_overlays": {
-      "version": "0.9B",
-      "curvature_rings": true,
-      "probability_halo": true,
-      "curvature_ring_count": 7,
-      "probability_halo_points": 4200,
-      "controls": {
-        "G": "toggle grid + probability halo",
-        "O": "toggle center marker + horizon + curvature rings"
-      }
+      ],
+      "trail_alpha_ceiling": 0.42,
+      "trail_alpha_floor": 0.08,
+      "trail_length": 12,
+      "trails_enabled": true
     },
     "visual_state_manager": {
-      "version": "0.9B",
-      "enabled": true,
-      "state_slots": 5,
-      "directory": "config/visual_states",
       "controls": {
-        "CTRL+SHIFT+1-5": "save visual state slot",
         "CTRL+1-5": "load visual state slot",
+        "CTRL+SHIFT+1-5": "save visual state slot",
         "SHIFT+6": "gallery orbit camera",
         "SHIFT+7": "macro disk camera",
         "SHIFT+8": "wide system camera",
         "SHIFT+9": "reset default camera",
         "SHIFT+D": "toggle auto-camera drift"
-      }
-    }
+      },
+      "directory": "config/visual_states",
+      "enabled": true,
+      "state_slots": 5,
+      "version": "0.9B"
+    },
+    "width": 1920,
+    "windowed": true
   },
-  "version": "0.9B",
   "session": {
     "default_size": "1920x1080",
     "full_session_script": "scripts/run_full_vcv_metal_session.sh",
     "vcv_bridge_required_for_external_control": true
-  }
+  },
+  "version": "0.9B"
 }

@@ -1,0 +1,20 @@
+{
+  "simulation_paused" : false,
+  "behavior_lock" : false,
+  "behavior_source" : "renderer_manual",
+  "respawn_on_capture" : true,
+  "source" : "behavior_preset",
+  "particle_mass" : 3.9610710144042969,
+  "geospatial_enabled" : true,
+  "particle_source_authority" : "renderer_geospatial_authority",
+  "updated_by" : "metal_renderer_v1_3F6_particle_reset_runtime",
+  "behavior_mode" : "field_pressure_bounce",
+  "version" : "1.3F6",
+  "timestamp_unix" : 1777967011.0448289,
+  "runtime_mode" : "geospatial_live_running",
+  "spacebar_mode" : "run_pause_geospatial",
+  "physics_armed" : true,
+  "particle_speed" : 0.23347084224224091,
+  "particle_source_mode" : "crab_nav_csv_particles",
+  "particle_source_csv" : "\/Users\/Joe\/Documents\/RealMathUniverse\/data\/raw\/merged_navdata.csv"
+}

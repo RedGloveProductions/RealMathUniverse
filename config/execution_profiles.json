@@ -1,95 +1,123 @@
 {
   "profiles": {
-    "preview": {
-      "compute_backend": "auto",
-      "prefer_gpu": true,
-      "strict_gpu": false,
-      "allow_cpu_fallback": true,
-      "strict_physics_mode": false,
-      "particle_count": 25000,
-      "field_resolution": [64, 64, 64],
+    "cluster": {
+      "allow_cpu_fallback": false,
+      "compute_backend": "cuda",
+      "field_resolution": [
+        384,
+        384,
+        384
+      ],
+      "logging_level": "detailed",
+      "particle_count": 99966,
       "precision": "float32",
-      "solver_fidelity": "reduced",
-      "logging_level": "normal",
-      "require_preflight_confirmation": false
+      "prefer_gpu": true,
+      "require_preflight_confirmation": true,
+      "solver_fidelity": "maximum",
+      "strict_gpu": true,
+      "strict_physics_mode": true
     },
     "desktop": {
-      "compute_backend": "auto",
-      "prefer_gpu": true,
-      "strict_gpu": false,
       "allow_cpu_fallback": true,
-      "strict_physics_mode": false,
-      "particle_count": 100000,
-      "field_resolution": [128, 128, 128],
-      "precision": "float32",
-      "solver_fidelity": "reduced",
+      "compute_backend": "auto",
+      "field_resolution": [
+        128,
+        128,
+        128
+      ],
       "logging_level": "normal",
-      "require_preflight_confirmation": false
-    },
-    "stress_light": {
-      "compute_backend": "auto",
-      "prefer_gpu": true,
-      "strict_gpu": false,
-      "allow_cpu_fallback": true,
-      "strict_physics_mode": false,
-      "particle_count": 250000,
-      "field_resolution": [160, 160, 160],
+      "particle_count": 99966,
       "precision": "float32",
+      "prefer_gpu": true,
+      "require_preflight_confirmation": false,
       "solver_fidelity": "reduced",
-      "logging_level": "benchmark",
-      "require_preflight_confirmation": false
-    },
-    "workstation": {
-      "compute_backend": "cuda_or_metal",
-      "prefer_gpu": true,
-      "strict_gpu": true,
-      "allow_cpu_fallback": false,
-      "strict_physics_mode": true,
-      "particle_count": 1000000,
-      "field_resolution": [256, 256, 256],
-      "precision": "float32",
-      "solver_fidelity": "high",
-      "logging_level": "detailed",
-      "require_preflight_confirmation": true
-    },
-    "installation": {
-      "compute_backend": "cuda_or_metal",
-      "prefer_gpu": true,
-      "strict_gpu": true,
-      "allow_cpu_fallback": false,
-      "strict_physics_mode": true,
-      "particle_count": 750000,
-      "field_resolution": [192, 192, 192],
-      "precision": "float32",
-      "solver_fidelity": "high",
-      "logging_level": "controlled",
-      "require_preflight_confirmation": true
-    },
-    "cluster": {
-      "compute_backend": "cuda",
-      "prefer_gpu": true,
-      "strict_gpu": true,
-      "allow_cpu_fallback": false,
-      "strict_physics_mode": true,
-      "particle_count": 5000000,
-      "field_resolution": [384, 384, 384],
-      "precision": "float32",
-      "solver_fidelity": "maximum",
-      "logging_level": "detailed",
-      "require_preflight_confirmation": true
+      "strict_gpu": false,
+      "strict_physics_mode": false
     },
     "god_mode": {
-      "compute_backend": "cuda",
-      "prefer_gpu": true,
-      "strict_gpu": true,
       "allow_cpu_fallback": false,
-      "strict_physics_mode": true,
-      "particle_count": 10000000,
-      "field_resolution": [512, 512, 512],
-      "precision": "float32",
-      "solver_fidelity": "maximum",
+      "compute_backend": "cuda",
+      "field_resolution": [
+        512,
+        512,
+        512
+      ],
       "logging_level": "exhaustive",
-      "require_preflight_confirmation": true
+      "particle_count": 99966,
+      "precision": "float32",
+      "prefer_gpu": true,
+      "require_preflight_confirmation": true,
+      "solver_fidelity": "maximum",
+      "strict_gpu": true,
+      "strict_physics_mode": true
+    },
+    "installation": {
+      "allow_cpu_fallback": false,
+      "compute_backend": "cuda_or_metal",
+      "field_resolution": [
+        192,
+        192,
+        192
+      ],
+      "logging_level": "controlled",
+      "particle_count": 99966,
+      "precision": "float32",
+      "prefer_gpu": true,
+      "require_preflight_confirmation": true,
+      "solver_fidelity": "high",
+      "strict_gpu": true,
+      "strict_physics_mode": true
+    },
+    "preview": {
+      "allow_cpu_fallback": true,
+      "compute_backend": "auto",
+      "field_resolution": [
+        64,
+        64,
+        64
+      ],
+      "logging_level": "normal",
+      "particle_count": 99966,
+      "precision": "float32",
+      "prefer_gpu": true,
+      "require_preflight_confirmation": false,
+      "solver_fidelity": "reduced",
+      "strict_gpu": false,
+      "strict_physics_mode": false
+    },
+    "stress_light": {
+      "allow_cpu_fallback": true,
+      "compute_backend": "auto",
+      "field_resolution": [
+        160,
+        160,
+        160
+      ],
+      "logging_level": "benchmark",
+      "particle_count": 99966,
+      "precision": "float32",
+      "prefer_gpu": true,
+      "require_preflight_confirmation": false,
+      "solver_fidelity": "reduced",
+      "strict_gpu": false,
+      "strict_physics_mode": false
+    },
+    "workstation": {
+      "allow_cpu_fallback": false,
+      "compute_backend": "cuda_or_metal",
+      "field_resolution": [
+        256,
+        256,
+        256
+      ],
+      "logging_level": "detailed",
+      "particle_count": 99966,
+      "precision": "float32",
+      "prefer_gpu": true,
+      "require_preflight_confirmation": true,
+      "solver_fidelity": "high",
+      "strict_gpu": true,
+      "strict_physics_mode": true
     }
   }
 }

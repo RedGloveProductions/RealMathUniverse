@@ -1,0 +1,57 @@
+{
+  "authority": "geospatial_csv",
+  "binary_out": "/Users/Joe/Documents/RealMathUniverse/output/geospatial_seed/particles_xyz_f32.bin",
+  "columns": {
+    "density": null,
+    "depth_or_elevation": "Elevation",
+    "latitude": "Latitude",
+    "longitude": "Longitude"
+  },
+  "mapped_bounds": {
+    "x": {
+      "max": 5.75,
+      "min": -5.75
+    },
+    "y": {
+      "max": 1.2000000476837158,
+      "min": -1.2000000476837158
+    },
+    "z": {
+      "max": 5.75,
+      "min": -5.75
+    }
+  },
+  "metadata_out": "/Users/Joe/Documents/RealMathUniverse/output/geospatial_seed/metadata.json",
+  "point_count": 99966,
+  "ranges": {
+    "depth_or_elevation": {
+      "max": -16.000171661376953,
+      "min": -3868.331298828125,
+      "p01": -209.9364776611328,
+      "p99": -16.382858276367188
+    },
+    "latitude": {
+      "max": 45.55516815185547,
+      "min": 24.184486389160156,
+      "p01": 24.812538146972656,
+      "p99": 28.86906623840332
+    },
+    "longitude": {
+      "max": -81.5,
+      "min": -146.7937469482422,
+      "p01": -84.78705596923828,
+      "p99": -81.5064926147461
+    },
+    "track_density": {
+      "max": 1.0,
+      "min": 1.0,
+      "p01": 1.0,
+      "p99": 2.0
+    }
+  },
+  "source_csv": "/Users/Joe/Documents/RealMathUniverse/data/raw/merged_navdata.csv",
+  "timestamp_unix": 1777955347.700893,
+  "version": "1.3C",
+  "vertical_scale": 1.2,
+  "world_radius": 5.75
+}
