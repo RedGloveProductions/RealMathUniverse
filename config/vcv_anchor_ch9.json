@@ -1,0 +1,8 @@
+{
+  "version": "1.3F0",
+  "channel": "/ch/9",
+  "target": "anchor_strength",
+  "meaning": "Geospatial anchor strength. 0.0 = free particle behavior, 1.0 = strongly tethered to original crab-data location.",
+  "recommended_range": [0.0, 1.0],
+  "safe_default": 0.65
+}

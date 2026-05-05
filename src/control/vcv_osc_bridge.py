@@ -1,23 +1,27 @@
+#!/usr/bin/env python3
 """
-RealMathUniverse v0.9C3 VCV OSC Bridge
-
-No profile system. No patch-specific assumptions.
+RealMathUniverse v1.3F5 VCV OSC Bridge
 
 Native cvOSCcv mapping:
-    /ch/1  probability
-    /ch/2  radial field weight
-    /ch/3  orbital field weight
-    /ch/4  vertical field weight
-    /ch/5  turbulence field weight
-    /ch/6  shell field weight
-    /ch/7  color mode
-    /ch/8  scene index
+    /ch/1   probability
+    /ch/2   radial field weight
+    /ch/3   orbital field weight
+    /ch/4   vertical field weight
+    /ch/5   turbulence field weight
+    /ch/6   shell field weight
+    /ch/7   color mode
+    /ch/8   scene index
+    /ch/9   particle_speed, bipolar -5V..+5V -> -3.0..+3.0
+    /ch/10  particle_mass,  bipolar -5V..+5V -> 0.20..5.00
+    /ch/11-/ch/32 aux/reserved, still monitored and written
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import os
+import tempfile
 import time
 from pathlib import Path
 from typing import Any
@@ -35,11 +39,27 @@ except ImportError as exc:
     ) from exc
 
 
+CHANNEL_LABELS = {
+    1: "probability",
+    2: "radial",
+    3: "orbital",
+    4: "vertical",
+    5: "turbulence",
+    6: "shell",
+    7: "color",
+    8: "scene",
+    9: "particle_speed",
+    10: "particle_mass",
+}
+for _i in range(11, 33):
+    CHANNEL_LABELS[_i] = f"aux_{_i}"
+
+
 def clamp(value: float, lo: float, hi: float) -> float:
     return max(lo, min(float(value), hi))
 
 
-def normalize_cv(value: float) -> float:
+def normalize_0_1_or_0_10(value: float) -> float:
     """Accept either 0-1 normalized control or 0-10V VCV-style CV."""
     value = float(value)
     if abs(value) > 1.5:
@@ -48,8 +68,23 @@ def normalize_cv(value: float) -> float:
 
 
 def scale_cv(value: float, lo: float, hi: float) -> float:
-    n = normalize_cv(value)
+    n = normalize_0_1_or_0_10(value)
     return lo + (hi - lo) * n
+
+
+def clamp_bipolar_5v(value: float) -> float:
+    return clamp(float(value), -5.0, 5.0)
+
+
+def particle_speed_from_bipolar(value: float) -> float:
+    # -5V..+5V -> -3.0..+3.0
+    return clamp((clamp_bipolar_5v(value) / 5.0) * 3.0, -3.0, 3.0)
+
+
+def particle_mass_from_bipolar(value: float) -> float:
+    # -5V..+5V -> 0.20..5.00
+    n = (clamp_bipolar_5v(value) + 5.0) / 10.0
+    return 0.20 + n * 4.80
 
 
 class VCVOSCBridge:
@@ -69,9 +104,17 @@ class VCVOSCBridge:
             "probability_value": 0.0,
             "field_layer_weights": [0.25, 1.0, 0.1, 0.05, 0.2],
             "color_mode": 0,
-            "scene_index": 0,
+            "scene_index": 1,
+            "particle_speed_raw": 0.0,
+            "particle_speed": 1.0,
+            "particle_mass_raw": 0.0,
+            "particle_mass": 1.0,
+            "aux_channels": {f"/ch/{i}": 0.0 for i in range(11, 33)},
         }
-        self.raw_channels = [0.0 for _ in range(8)]
+        self.raw_channels = [0.0 for _ in range(32)]
+        self.normalized_channels = [0.0 for _ in range(32)]
+        self.channel_counts = [0 for _ in range(32)]
+        self.channel_last_seen = [0.0 for _ in range(32)]
         self.last_signal_time = 0.0
 
     def update_value(self, address: str, *args: Any) -> None:
@@ -83,40 +126,78 @@ class VCVOSCBridge:
         except Exception:
             return
 
-        if address in ("/ch/1", "/rmu/probability"):
-            self.raw_channels[0] = value
-            self.values["probability_value"] = normalize_cv(value)
-        elif address in ("/ch/2", "/rmu/radial"):
-            self.raw_channels[1] = value
-            self.values["field_layer_weights"][0] = scale_cv(value, 0.0, 3.0)
-        elif address in ("/ch/3", "/rmu/orbital"):
-            self.raw_channels[2] = value
-            self.values["field_layer_weights"][1] = scale_cv(value, 0.0, 3.0)
-        elif address in ("/ch/4", "/rmu/vertical"):
-            self.raw_channels[3] = value
-            self.values["field_layer_weights"][2] = scale_cv(value, 0.0, 3.0)
-        elif address in ("/ch/5", "/rmu/turbulence"):
-            self.raw_channels[4] = value
-            self.values["field_layer_weights"][3] = scale_cv(value, 0.0, 3.0)
-        elif address in ("/ch/6", "/rmu/shell"):
-            self.raw_channels[5] = value
-            self.values["field_layer_weights"][4] = scale_cv(value, 0.0, 3.0)
-        elif address in ("/ch/7", "/rmu/color"):
-            self.raw_channels[6] = value
-            self.values["color_mode"] = int(round(scale_cv(value, 0, 4)))
-        elif address in ("/ch/8", "/rmu/scene"):
-            self.raw_channels[7] = value
-            self.values["scene_index"] = int(round(scale_cv(value, 1, 6)))
-        else:
+        try:
+            if not address.startswith("/ch/"):
+                legacy = {
+                    "/rmu/probability": 1,
+                    "/rmu/radial": 2,
+                    "/rmu/orbital": 3,
+                    "/rmu/vertical": 4,
+                    "/rmu/turbulence": 5,
+                    "/rmu/shell": 6,
+                    "/rmu/color": 7,
+                    "/rmu/scene": 8,
+                    "/rmu/speed": 9,
+                    "/rmu/particle_speed": 9,
+                    "/rmu/mass": 10,
+                    "/rmu/particle_mass": 10,
+                }
+                ch = legacy.get(address)
+                if ch is None:
+                    return
+            else:
+                ch = int(address.split("/")[-1])
+        except Exception:
             return
 
-        self.last_signal_time = time.time()
+        if ch < 1 or ch > 32:
+            return
+
+        idx = ch - 1
+        now = time.time()
+        self.raw_channels[idx] = value
+        self.normalized_channels[idx] = normalize_0_1_or_0_10(value)
+        self.channel_counts[idx] += 1
+        self.channel_last_seen[idx] = now
+
+        if ch == 1:
+            self.values["probability_value"] = normalize_0_1_or_0_10(value)
+        elif ch == 2:
+            self.values["field_layer_weights"][0] = scale_cv(value, 0.0, 3.0)
+        elif ch == 3:
+            self.values["field_layer_weights"][1] = scale_cv(value, 0.0, 3.0)
+        elif ch == 4:
+            self.values["field_layer_weights"][2] = scale_cv(value, 0.0, 3.0)
+        elif ch == 5:
+            self.values["field_layer_weights"][3] = scale_cv(value, 0.0, 3.0)
+        elif ch == 6:
+            self.values["field_layer_weights"][4] = scale_cv(value, 0.0, 3.0)
+        elif ch == 7:
+            self.values["color_mode"] = int(round(scale_cv(value, 0, 4)))
+        elif ch == 8:
+            self.values["scene_index"] = int(round(scale_cv(value, 1, 6)))
+        elif ch == 9:
+            self.values["particle_speed_raw"] = value
+            self.values["particle_speed"] = particle_speed_from_bipolar(value)
+        elif ch == 10:
+            self.values["particle_mass_raw"] = value
+            self.values["particle_mass"] = particle_mass_from_bipolar(value)
+        else:
+            self.values["aux_channels"][f"/ch/{ch}"] = value
+
+        self.last_signal_time = now
         self.write_state()
         print(f"VCV OSC {address} -> {value}")
 
     def write_state(self) -> None:
         now = time.time()
         external_detected = (now - self.last_signal_time) <= self.stale_after
+
+        native_channels = {f"/ch/{i}": CHANNEL_LABELS[i] for i in range(1, 33)}
+        channel_active = {
+            f"/ch/{i}": self.channel_last_seen[i - 1] > 0.0 and (now - self.channel_last_seen[i - 1]) <= self.stale_after
+            for i in range(1, 33)
+        }
 
         summary = (
             f"p={self.values['probability_value']:.2f} "
@@ -126,29 +207,25 @@ class VCVOSCBridge:
             f"t={self.values['field_layer_weights'][3]:.2f} "
             f"s={self.values['field_layer_weights'][4]:.2f} "
             f"color={self.values['color_mode']} "
-            f"scene={self.values['scene_index']}"
+            f"scene={self.values['scene_index']} "
+            f"speed={self.values['particle_speed']:.2f} raw9={self.values['particle_speed_raw']:.2f} "
+            f"mass={self.values['particle_mass']:.2f} raw10={self.values['particle_mass_raw']:.2f}"
         )
 
-        native_channels = {
-            "/ch/1": "probability",
-            "/ch/2": "radial",
-            "/ch/3": "orbital",
-            "/ch/4": "vertical",
-            "/ch/5": "turbulence",
-            "/ch/6": "shell",
-            "/ch/7": "color",
-            "/ch/8": "scene",
-        }
-
         state = {
-            "version": "0.9C3",
+            "version": "1.3F5",
             "timestamp_unix": now,
-            "updated_by": "vcv_osc_bridge_v0_9C3_no_profiles",
+            "updated_by": "vcv_osc_bridge_v1_3F5_ch1_to_ch32_speed_mass",
             "profile_system": "removed",
             "external_detected": external_detected,
             "probability_source": "vcv" if external_detected else "internal",
             "native_channels": native_channels,
+            "channel_active": channel_active,
+            "channel_counts": {f"/ch/{i}": self.channel_counts[i - 1] for i in range(1, 33)},
+            "channel_last_seen_unix": {f"/ch/{i}": self.channel_last_seen[i - 1] for i in range(1, 33)},
             "raw_channels": self.raw_channels,
+            "raw_channel_values": self.raw_channels,
+            "normalized_channels": self.normalized_channels,
             "summary": summary,
             **self.values,
         }
@@ -157,15 +234,24 @@ class VCVOSCBridge:
 
         control = self.read_json(self.control_state_path, default={})
         control["vcv"] = {
-            "version": "0.9C3",
+            "version": "1.3F5",
             "profile_system": "removed",
             "external_detected": external_detected,
             "probability_source": state["probability_source"],
             "last_signal_unix": self.last_signal_time,
             "state_path": str(self.vcv_state_path),
             "native_channels": native_channels,
+            "channel_active": channel_active,
+            "raw_channels": self.raw_channels,
+            "normalized_channels": self.normalized_channels,
+            "particle_speed": self.values["particle_speed"],
+            "particle_speed_raw": self.values["particle_speed_raw"],
+            "particle_mass": self.values["particle_mass"],
+            "particle_mass_raw": self.values["particle_mass_raw"],
             "summary": summary,
         }
+        control["particle_speed"] = self.values["particle_speed"]
+        control["particle_mass"] = self.values["particle_mass"]
         control["timestamp_unix"] = now
         self.atomic_write_json(self.control_state_path, control)
 
@@ -179,25 +265,36 @@ class VCVOSCBridge:
 
     def atomic_write_json(self, path: Path, payload: dict) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
-        tmp = path.with_suffix(path.suffix + ".tmp")
-        tmp.write_text(json.dumps(payload, indent=2), encoding="utf-8")
-        tmp.replace(path)
+        fd, tmp_name = tempfile.mkstemp(prefix=path.name + ".", suffix=".tmp", dir=str(path.parent))
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                json.dump(payload, f, indent=2)
+                f.write("\n")
+            os.replace(tmp_name, path)
+        finally:
+            try:
+                if os.path.exists(tmp_name):
+                    os.unlink(tmp_name)
+            except Exception:
+                pass
 
     def serve(self) -> None:
         dispatcher = Dispatcher()
+        for i in range(1, 33):
+            dispatcher.map(f"/ch/{i}", self.update_value)
         for addr in [
-            "/ch/1", "/ch/2", "/ch/3", "/ch/4",
-            "/ch/5", "/ch/6", "/ch/7", "/ch/8",
             "/rmu/probability", "/rmu/radial", "/rmu/orbital", "/rmu/vertical",
             "/rmu/turbulence", "/rmu/shell", "/rmu/color", "/rmu/scene",
+            "/rmu/speed", "/rmu/particle_speed", "/rmu/mass", "/rmu/particle_mass",
         ]:
             dispatcher.map(addr, self.update_value)
 
         self.write_state()
         server = ThreadingOSCUDPServer((self.host, self.port), dispatcher)
-        print(f"RealMathUniverse VCV OSC Bridge v0.9C3 listening on {self.host}:{self.port}")
-        print("Profile system removed. No profile argument is accepted or needed.")
-        print("Native VCV channels: /ch/1 probability, /ch/2 radial, /ch/3 orbital, /ch/4 vertical, /ch/5 turbulence, /ch/6 shell, /ch/7 color, /ch/8 scene")
+        print(f"RealMathUniverse VCV OSC Bridge v1.3F5 listening on {self.host}:{self.port}")
+        print("Native VCV channels: /ch/1-/ch/32")
+        print("/ch/9 particle_speed bipolar -5V..+5V -> -3..+3")
+        print("/ch/10 particle_mass bipolar -5V..+5V -> 0.20..5.00")
         print(f"Writing state to {self.vcv_state_path}")
         server.serve_forever()
 

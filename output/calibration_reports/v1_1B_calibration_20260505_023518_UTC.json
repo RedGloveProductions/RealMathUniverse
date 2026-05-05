@@ -1,0 +1,82 @@
+{
+  "column_for_mapping": {
+    "crab_density_to_curvature_density": "track_density",
+    "crab_density_to_probability_weight": "track_density",
+    "crab_depth_to_higgs_lambda": "Elevation",
+    "crab_depth_to_temperature_proxy": "Elevation",
+    "crab_depth_to_y": "Elevation",
+    "crab_latitude_to_z": "Latitude",
+    "crab_longitude_to_x": "Longitude"
+  },
+  "columns": [
+    "Longitude",
+    "Latitude",
+    "ID",
+    "Symbol",
+    "Comment",
+    "Elevation",
+    "track_density"
+  ],
+  "registry": {
+    "mapping_config_path": "/Users/Joe/Documents/RealMathUniverse/config/calibration_maps.json",
+    "mapping_count": 7,
+    "mappings": [
+      "crab_longitude_to_x",
+      "crab_latitude_to_z",
+      "crab_depth_to_y",
+      "crab_depth_to_temperature_proxy",
+      "crab_density_to_curvature_density",
+      "crab_depth_to_higgs_lambda",
+      "crab_density_to_probability_weight"
+    ],
+    "source_stats": {
+      "Elevation": {
+        "count": 99966,
+        "maximum": -16.000171099999903,
+        "mean": -62.46513734219934,
+        "median": -42.78975239999987,
+        "minimum": -3868.3312499999993,
+        "p01": -209.93648099999996,
+        "p05": -159.63302789999983,
+        "p95": -18.23711479999973,
+        "p99": -16.38285807999986
+      },
+      "Latitude": {
+        "count": 99966,
+        "maximum": 45.555167,
+        "mean": 25.743450697388113,
+        "median": 25.4718996,
+        "minimum": 24.1844857,
+        "p01": 24.81253856,
+        "p05": 25.059712175,
+        "p95": 28.41426275,
+        "p99": 28.869065899999995
+      },
+      "Longitude": {
+        "count": 99966,
+        "maximum": -81.5000029,
+        "mean": -82.28754470071524,
+        "median": -81.9540636,
+        "minimum": -146.79375,
+        "p01": -84.787059,
+        "p05": -83.9344581,
+        "p95": -81.5379172,
+        "p99": -81.50648912
+      },
+      "track_density": {
+        "count": 99966,
+        "maximum": 32808.0,
+        "mean": 17144.242942600486,
+        "median": 11573.0,
+        "minimum": 1.0,
+        "p01": 392.0,
+        "p05": 1627.0,
+        "p95": 32808.0,
+        "p99": 32808.0
+      }
+    }
+  },
+  "row_count": 99966,
+  "source_csv": "/Users/Joe/Documents/RealMathUniverse/data/raw/merged_navdata.csv",
+  "version": "1.1B"
+}

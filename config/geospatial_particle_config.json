@@ -1,0 +1,13 @@
+{
+  "authority": "renderer_geospatial_authority",
+  "enabled": true,
+  "mode": "geospatial_crab_field",
+  "notes": "v1.3D uses the geospatial CSV as the renderer authority and applies behaviors as non-destructive renderer transforms. Python exporter is bypassed in this mode to prevent races.",
+  "physics_armed": false,
+  "source_csv": "/Users/Joe/Documents/RealMathUniverse/data/raw/merged_navdata.csv",
+  "spacebar_mode": "run_pause_geospatial",
+  "startup_paused": true,
+  "version": "1.3D",
+  "vertical_scale": 1.2,
+  "world_radius": 5.75
+}

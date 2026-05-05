@@ -1,0 +1,29 @@
+{
+  "version": "1.1A",
+  "enabled_default": true,
+  "mode_default": "crab_nav_csv",
+  "fallback_mode": "default_synthetic",
+  "source_csv": "data/raw/merged_navdata.csv",
+  "runtime_state_file": "runtime/data_mode_state.json",
+  "output_state_file": "output/dataset_state.json",
+  "report_dir": "output/calibration_reports",
+  "poll_seconds": 0.5,
+  "write_interval_seconds": 1.0,
+  "controls": {
+    "terminal_toggle_script": "scripts/rmu_data_mode.sh",
+    "on": "./scripts/rmu_data_mode.sh on",
+    "off": "./scripts/rmu_data_mode.sh off",
+    "toggle": "./scripts/rmu_data_mode.sh toggle",
+    "status": "./scripts/rmu_data_mode.sh status"
+  },
+  "fallback_defaults": {
+    "curvature_density": 0.15,
+    "temperature_proxy": 0.25,
+    "higgs_lambda": 0.35,
+    "probability_weight": 0.50,
+    "x": 0.0,
+    "y": 0.0,
+    "z": 0.0,
+    "t": 0.0
+  }
+}
