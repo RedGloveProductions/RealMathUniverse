@@ -857,13 +857,14 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
     var vcvSmoothingAmount: Float = 0.22
     var vcvChannelLabels: [String] = [
         "probability", "radial", "orbital", "vertical", "turbulence", "shell", "color", "scene",
-        "particle_speed", "particle_mass", "aux_11", "aux_12", "aux_13", "aux_14", "aux_15", "aux_16",
+        "particle_speed", "particle_mass", "particle_turbulence", "particle_cohesion", "aux_13", "aux_14", "aux_15", "aux_16",
+
         "aux_17", "aux_18", "aux_19", "aux_20", "aux_21", "aux_22", "aux_23", "aux_24",
         "aux_25", "aux_26", "aux_27", "aux_28", "aux_29", "aux_30", "aux_31", "aux_32"
     ]
     var vcvChannelTargets: [String] = [
         "probability_value", "field_layer_weights[0]", "field_layer_weights[1]", "field_layer_weights[2]", "field_layer_weights[3]", "field_layer_weights[4]", "color_mode", "scene_index",
-        "particle_speed", "particle_mass", "aux_11", "aux_12", "aux_13", "aux_14", "aux_15", "aux_16",
+        "particle_speed", "particle_mass", "particle_turbulence", "particle_cohesion", "aux_13", "aux_14", "aux_15", "aux_16",
         "aux_17", "aux_18", "aux_19", "aux_20", "aux_21", "aux_22", "aux_23", "aux_24",
         "aux_25", "aux_26", "aux_27", "aux_28", "aux_29", "aux_30", "aux_31", "aux_32"
     ]
@@ -897,6 +898,8 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
     // SPACE gates these transforms. When paused, the crab CSV field remains stable.
     var behaviorEffectCode: Int32 = 1
     var geospatialSimulationPaused: Int32 = 1
+    var geospatialBehaviorEnabled: Bool = true
+    var geospatialRespawnOnCapture: Bool = false
 
     // RMU v1.3F6: Lorenz/VCV bipolar controls.
     // /ch/9  particle_speed: -5V..+5V -> -3.0..+3.0 motion scalar.
@@ -904,6 +907,8 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
     // Anchor tether is retired from live motion; crab geography is the starting condition.
     var geospatialParticleSpeed: Float = 1.0
     var geospatialParticleMass: Float = 1.0
+    var geospatialParticleTurbulence: Float = 0.0
+    var geospatialParticleCohesion: Float = 0.0
     var geospatialAnchorStrength: Float = 0.0  // deprecated compatibility field
     var geospatialBehaviorGain: Float = 1.0
     var geospatialDisplayParticleLimit: Int = 45000
@@ -1044,28 +1049,30 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
                 float wave = sin(baseRadius * 3.2 - runT * 2.4);
                 float3 tangent = normalize(float3(-fp.z, 0.0, fp.x) + float3(0.0001, 0.0, 0.0001));
 
-                if (behaviorEffectCode == 1) {
+                int effectiveBehaviorCode = behaviorEffectCode;
+
+            if (effectiveBehaviorCode == 1) {
                     float theta = 0.18 * grow;
                     float cs = cos(theta);
                     float sn = sin(theta);
                     fp.xz = float2(fp.x * cs - fp.z * sn, fp.x * sn + fp.z * cs);
                     fp += tangent * (0.10 + 0.05 * orbitPulse);
                     fp += dir * (0.035 * sin(runT + baseRadius * 1.7));
-                } else if (behaviorEffectCode == 2) {
+                } else if (effectiveBehaviorCode == 2) {
                     float collapse = clamp(grow * 0.82, 0.0, 0.88);
                     fp *= (1.0 - collapse);
                     fp += tangent * (0.18 * (1.0 - collapse));
-                } else if (behaviorEffectCode == 3) {
+                } else if (effectiveBehaviorCode == 3) {
                     float theta = 1.85 * grow + baseRadius * 0.08;
                     float cs = cos(theta);
                     float sn = sin(theta);
                     fp.xz = float2(fp.x * cs - fp.z * sn, fp.x * sn + fp.z * cs);
                     fp.y *= mix(1.0, 0.08, grow);
                     fp += tangent * (0.22 + 0.08 * orbitPulse);
-                } else if (behaviorEffectCode == 4) {
+                } else if (effectiveBehaviorCode == 4) {
                     fp += dir * (0.55 * grow + 0.30 * wave);
                     fp.y += 0.38 * sin(runT * 2.1 + baseRadius * 2.4);
-                } else if (behaviorEffectCode == 5) {
+                } else if (effectiveBehaviorCode == 5) {
                     float collapse = clamp(grow * 1.05, 0.0, 0.96);
                     fp *= (1.0 - collapse);
                     fp += tangent * (0.07 * (1.0 - collapse));
@@ -1133,6 +1140,10 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
             constant float &fieldWeightShell [[buffer(9)]],
             constant float &phase [[buffer(10)]],
             constant float &particleMass [[buffer(11)]],
+            constant float &particleTurbulence [[buffer(12)]],
+            constant float &particleCohesion [[buffer(13)]],
+            constant int &behaviorEnabled [[buffer(14)]],
+            constant int &respawnOnCapture [[buffer(15)]],
             uint id [[thread_position_in_grid]]
         ) {
             if (id >= particleCount) { return; }
@@ -1161,6 +1172,8 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
             float3 force = float3(0.0);
             float speedScalar = clamp(particleSpeed, -3.0, 3.0);
             float massScalar = max(particleMass, 0.20);
+            float turbulenceScalar = clamp(particleTurbulence, 0.0, 2.5);
+            float cohesionScalar = clamp(particleCohesion, 0.0, 3.0);
 
             // v1.3F6: no active anchor tether. Crab geography is the initial condition;
             // speed and mass now control free-roaming independent particles.
@@ -1176,24 +1189,40 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
             ) * (0.004 * turbW * particleGain);
             force += dir * sin(r * 2.8 - phase * 1.7 + seed) * (0.004 * shellW);
 
-            if (behaviorEffectCode == 1) {
+            // RMU v1.3F9B VCV-only particle force pair. This remains active when behavior is OFF.
+            force += float3(
+                sin(localPhase * 3.7 + pos.z * 5.1 + seed * 6.2831853),
+                cos(localPhase * 2.9 + pos.x * 4.3 + seed2 * 6.2831853),
+                sin(localPhase * 3.3 + pos.y * 4.7 + seed3 * 6.2831853)
+            ) * (0.010 * turbulenceScalar * particleGain);
+            force += -dir * (0.012 * cohesionScalar);
+
+            // v1.3F8: first-class /ch/11 particle turbulence and /ch/12 particle cohesion.
+            force += float3(
+                sin(localPhase * 3.7 + pos.z * 5.1 + seed * 6.2831853),
+                cos(localPhase * 2.9 + pos.x * 4.3 + seed2 * 6.2831853),
+                sin(localPhase * 3.3 + pos.y * 4.7 + seed3 * 6.2831853)
+            ) * (0.010 * turbulenceScalar * particleGain);
+            force += -dir * (0.012 * cohesionScalar);
+
+            int effectiveBehaviorCode = behaviorEffectCode;\n            if (effectiveBehaviorCode == 1) {
                 // stable_orbit_cloud: independent orbit with strong memory.
                 force += tangent * (0.022 * particleGain);
-            } else if (behaviorEffectCode == 2) {
+            } else if (effectiveBehaviorCode == 2) {
                 // black_hole_capture: individual inward streams, anchor competes against capture.
                 force += -dir * (0.040 + 0.055 * seed) * particleGain;
                 force += tangent * (0.015 + 0.020 * seed2);
-            } else if (behaviorEffectCode == 3) {
+            } else if (effectiveBehaviorCode == 3) {
                 // accretion_disk: flatten and rotate independently.
                 force += tangent * (0.052 + 0.035 * seed) * particleGain;
                 force.y += -pos.y * (0.060 + 0.070 * seed2);
                 force += -dir * 0.010;
-            } else if (behaviorEffectCode == 4) {
+            } else if (effectiveBehaviorCode == 4) {
                 // field_pressure_bounce: pressure waves / rebounds.
                 float wave = sin(r * 5.0 - phase * 3.6 + seed * 6.2831853);
                 force += dir * wave * (0.060 + 0.035 * seed2) * particleGain;
                 force.y += cos(localPhase * 1.6) * 0.045 * particleGain;
-            } else if (behaviorEffectCode == 5) {
+            } else if (effectiveBehaviorCode == 5) {
                 // infinite_collapse: aggressive independent collapse.
                 force += -dir * (0.090 + 0.080 * seed) * particleGain;
                 force += tangent * (0.010 * sin(localPhase));
@@ -1202,6 +1231,13 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
             float3 acceleration = force / massScalar;
             vel = (vel + acceleration * dt * 60.0 * speedScalar) * damping;
             pos += vel * dt * 60.0;
+
+            // RMU v1.3F9B respawn-on-capture. Applies in all behavior states.
+            if (respawnOnCapture == 1 && length(pos) < 0.18) {
+                float jitterScale = 0.012;
+                pos = base + float3(seed - 0.5, seed2 - 0.5, seed3 - 0.5) * jitterScale;
+                vel = float3(0.0);
+            }
 
             // Hard safety clamp, prevents particles from going into numerical infinity.
             float maxRadius = 14.0;
@@ -1364,6 +1400,18 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
         encoder.setBytes(&phase, length: MemoryLayout<Float>.stride, index: 10)
         var particleMass = geospatialParticleMass
         encoder.setBytes(&particleMass, length: MemoryLayout<Float>.stride, index: 11)
+        var particleTurbulence = geospatialParticleTurbulence
+        encoder.setBytes(&particleTurbulence, length: MemoryLayout<Float>.stride, index: 12)
+        var particleCohesion = geospatialParticleCohesion
+        encoder.setBytes(&particleCohesion, length: MemoryLayout<Float>.stride, index: 13)
+        var behaviorEnabledValue: Int32 = geospatialBehaviorEnabled ? 1 : 0
+        encoder.setBytes(&behaviorEnabledValue, length: MemoryLayout<Int32>.stride, index: 14)
+        var respawnOnCaptureValue: Int32 = geospatialRespawnOnCapture ? 1 : 0
+        encoder.setBytes(&respawnOnCaptureValue, length: MemoryLayout<Int32>.stride, index: 15)
+        var behaviorEnabledForKernel = geospatialBehaviorEnabled ? Int32(1) : Int32(0)
+        encoder.setBytes(&behaviorEnabledForKernel, length: MemoryLayout<Int32>.stride, index: 14)
+        var respawnOnCaptureForKernel = geospatialRespawnOnCapture ? Int32(1) : Int32(0)
+        encoder.setBytes(&respawnOnCaptureForKernel, length: MemoryLayout<Int32>.stride, index: 15)
 
         let threads = MTLSize(width: Int(count), height: 1, depth: 1)
         let w = min(computePipelineState.maxTotalThreadsPerThreadgroup, 256)
@@ -1573,7 +1621,7 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
     }
 
     func printDiagnostics() {
-        print("Metal renderer | fps=\(String(format: "%.1f", currentFPS)) | points=\(frameLoader.latestPointCount) | simFrame=\(frameLoader.latestFrameIndex) | runtime=\(geospatialSimulationPaused == 0 ? "geospatial_live_running" : "geospatial_static_paused") | behaviorCode=\(behaviorEffectCode) | color=\(colorModeName) | trails=\(trailsEnabled) len=\(trailLength) | presentation=\(presentationModeEnabled) | FIELD_SYSTEM=\(fieldLayersEnabled ? "ON" : "OFF") | SELECTED=\(selectedFieldLayerName) | WEIGHT=\(String(format: "%.2f", selectedFieldLayerWeight)) | ENABLED=\(fieldLayerEnabled[selectedFieldLayerIndex]) | VCV=\(vcvDisplayStatus()) | SPEED=\(String(format: "%.2f", geospatialParticleSpeed)) | MASS=\(String(format: "%.2f", geospatialParticleMass)) | CAP=\(geospatialDisplayParticleLimit) | SAFE=\(vcvSafeModeEnabled) | \(vcvChannelCompactSummary())")
+        print("Metal renderer | fps=\(String(format: "%.1f", currentFPS)) | points=\(frameLoader.latestPointCount) | simFrame=\(frameLoader.latestFrameIndex) | runtime=\(geospatialSimulationPaused == 0 ? "geospatial_live_running" : "geospatial_static_paused") | behaviorCode=\(behaviorEffectCode) | color=\(colorModeName) | trails=\(trailsEnabled) len=\(trailLength) | presentation=\(presentationModeEnabled) | FIELD_SYSTEM=\(fieldLayersEnabled ? "ON" : "OFF") | SELECTED=\(selectedFieldLayerName) | WEIGHT=\(String(format: "%.2f", selectedFieldLayerWeight)) | ENABLED=\(fieldLayerEnabled[selectedFieldLayerIndex]) | VCV=\(vcvDisplayStatus()) | SPEED=\(String(format: "%.2f", geospatialParticleSpeed)) | MASS=\(String(format: "%.2f", geospatialParticleMass)) | TURB=\(String(format: "%.2f", geospatialParticleTurbulence)) | COH=\(String(format: "%.2f", geospatialParticleCohesion)) | CAP=\(geospatialDisplayParticleLimit) | SAFE=\(vcvSafeModeEnabled) | \(vcvChannelCompactSummary())")
     }
 
     func increasePointSize() { pointSize = min(pointSize + 0.5, 12.0); hud?.updateText() }
@@ -1854,6 +1902,43 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
             if externalDetected && vcvChannelEnabled.count >= 10 && vcvChannelEnabled[9] {
                 geospatialParticleMass = smoothValue(current: geospatialParticleMass, target: clamped, amount: vcvSmoothingAmount)
             }
+        }
+        // RMU_V1_3F8_TURB_COH_PARSE: /ch/11 particle turbulence and /ch/12 particle cohesion.
+        func turbulenceFromBipolarRaw(_ raw: Float) -> Float {
+            let n = max(0.0, min((raw + 5.0) / 10.0, 1.0))
+            return max(0.0, min(n * 2.50, 2.50))
+        }
+        func cohesionFromBipolarRaw(_ raw: Float) -> Float {
+            let n = max(0.0, min((raw + 5.0) / 10.0, 1.0))
+            return max(0.0, min(n * 3.00, 3.00))
+        }
+
+        var turbulenceMappedOptional: Float? = nil
+        var turbulenceRawOptional: Float? = nil
+        if let n = json["particle_turbulence"] as? NSNumber { turbulenceMappedOptional = Float(n.doubleValue) }
+        if let n = json["particle_turbulence_raw"] as? NSNumber { turbulenceRawOptional = Float(n.doubleValue) }
+        else if let rawChannelValues = json["raw_channels"] as? [NSNumber], rawChannelValues.count >= 11 { turbulenceRawOptional = Float(rawChannelValues[10].doubleValue) }
+        else if let rawChannelValues = json["raw_channel_values"] as? [NSNumber], rawChannelValues.count >= 11 { turbulenceRawOptional = Float(rawChannelValues[10].doubleValue) }
+        if turbulenceMappedOptional == nil, let raw = turbulenceRawOptional { turbulenceMappedOptional = turbulenceFromBipolarRaw(raw) }
+        if let turbulenceMapped = turbulenceMappedOptional {
+            let clamped = max(0.0, min(turbulenceMapped, 2.50))
+            if vcvRawChannelValues.count >= 11 { vcvRawChannelValues[10] = turbulenceRawOptional ?? clamped }
+            if vcvChannelValues.count >= 11 { vcvChannelValues[10] = clamped }
+            if externalDetected && vcvChannelEnabled.count >= 11 && vcvChannelEnabled[10] { geospatialParticleTurbulence = smoothValue(current: geospatialParticleTurbulence, target: clamped, amount: vcvSmoothingAmount) }
+        }
+
+        var cohesionMappedOptional: Float? = nil
+        var cohesionRawOptional: Float? = nil
+        if let n = json["particle_cohesion"] as? NSNumber { cohesionMappedOptional = Float(n.doubleValue) }
+        if let n = json["particle_cohesion_raw"] as? NSNumber { cohesionRawOptional = Float(n.doubleValue) }
+        else if let rawChannelValues = json["raw_channels"] as? [NSNumber], rawChannelValues.count >= 12 { cohesionRawOptional = Float(rawChannelValues[11].doubleValue) }
+        else if let rawChannelValues = json["raw_channel_values"] as? [NSNumber], rawChannelValues.count >= 12 { cohesionRawOptional = Float(rawChannelValues[11].doubleValue) }
+        if cohesionMappedOptional == nil, let raw = cohesionRawOptional { cohesionMappedOptional = cohesionFromBipolarRaw(raw) }
+        if let cohesionMapped = cohesionMappedOptional {
+            let clamped = max(0.0, min(cohesionMapped, 3.00))
+            if vcvRawChannelValues.count >= 12 { vcvRawChannelValues[11] = cohesionRawOptional ?? clamped }
+            if vcvChannelValues.count >= 12 { vcvChannelValues[11] = clamped }
+            if externalDetected && vcvChannelEnabled.count >= 12 && vcvChannelEnabled[11] { geospatialParticleCohesion = smoothValue(current: geospatialParticleCohesion, target: clamped, amount: vcvSmoothingAmount) }
         }
     }
 
@@ -2184,6 +2269,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     var alwaysOnTop = false
     var projectRoot = "/Users/Joe/Documents/RealMathUniverse"
     var currentRespawn = false
+    var currentBehaviorEnabled = true
     var currentBehaviorMode = "stable_orbit_cloud"
     var behaviorSource = "renderer_manual"
     var behaviorLock = false
@@ -2271,7 +2357,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // RMU_V1_3D2_INITIAL_RENDERER_GEOSTATE
         runtimeMode = canonicalRuntimeMode()
         renderer.geospatialSimulationPaused = simulationPaused ? 1 : 0
-        renderer.behaviorEffectCode = behaviorEffectCode(for: currentBehaviorMode)
+        renderer.behaviorEffectCode = effectiveBehaviorEffectCode(for: currentBehaviorMode)
         writeRuntimeState(source: "startup")
 
         metalView.delegate = renderer
@@ -2406,6 +2492,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
 
+        if characters == "e", shiftDown {
+            toggleBehaviorEngine()
+            return
+        }
+
         if characters == "r", shiftDown {
             renderer?.resetGeospatialParticleState()
             writeRuntimeState(source: "particle_reset")
@@ -2453,7 +2544,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         case "8": writeSamplePreset(25000)
         case "9": writeSamplePreset(50000)
         case "0": writeSamplePreset(100000)
-        case "r": currentRespawn.toggle(); writeControlState(respawnOnly: true)
+        case "r":
+            currentRespawn.toggle()
+            renderer?.geospatialRespawnOnCapture = currentRespawn
+            writeRuntimeState(source: "respawn_toggle")
+            writeControlState(respawnOnly: true)
         case "p": renderer?.toggleTrails()
         case "n": renderer?.clearTrails()
         case ",": renderer?.decreaseTrailLength()
@@ -2479,6 +2574,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         default: break
         }
     }
+
+    func toggleBehaviorEngine() {
+        currentBehaviorEnabled.toggle()
+        renderer?.geospatialBehaviorEnabled = currentBehaviorEnabled
+        renderer?.behaviorEffectCode = effectiveBehaviorEffectCode(for: currentBehaviorMode)
+
+        writeRuntimeState(source: "behavior_toggle")
+        writeControlState(extra: [
+            "behavior_enabled": currentBehaviorEnabled,
+            "behavior_effect_code": renderer?.behaviorEffectCode ?? 0,
+            "behavior_bypass_authority": "renderer_shift_e"
+        ])
+
+        print("RMU v1.3F9G behavior engine: \(currentBehaviorEnabled ? "ON" : "OFF") | behaviorEffectCode=\(renderer?.behaviorEffectCode ?? -1)")
+    }
+
+
 
     func datasetStateURL() -> URL {
         URL(fileURLWithPath: projectRoot).appendingPathComponent("output").appendingPathComponent("dataset_state.json")
@@ -2516,6 +2628,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             "behavior_mode": behavior,
             "behavior_source": source,
             "behavior_lock": false,
+            "behavior_enabled": renderer?.geospatialBehaviorEnabled ?? true,
             "behavior_timestamp_unix": now,
             "collapse_behavior": [
                 "behavior_mode": behavior,
@@ -2661,6 +2774,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    func effectiveBehaviorEffectCode(for behavior: String) -> Int32 {
+        return currentBehaviorEnabled ? behaviorEffectCode(for: behavior) : 0
+    }
+
+
     func runtimeStateURL() -> URL {
         URL(fileURLWithPath: projectRoot).appendingPathComponent("output").appendingPathComponent("runtime_state.json")
     }
@@ -2682,6 +2800,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             "spacebar_mode": "run_pause_geospatial",
             "particle_speed": renderer?.geospatialParticleSpeed ?? 1.0,
             "particle_mass": renderer?.geospatialParticleMass ?? 1.0,
+            "particle_turbulence": renderer?.geospatialParticleTurbulence ?? 0.0,
+            "particle_cohesion": renderer?.geospatialParticleCohesion ?? 0.0,
             "particle_source_authority": "renderer_geospatial_authority",
             "particle_source_mode": "crab_nav_csv_particles",
             "particle_source_csv": "/Users/Joe/Documents/RealMathUniverse/data/raw/merged_navdata.csv",
@@ -2781,7 +2901,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         renderer?.geospatialSimulationPaused = simulationPaused ? 1 : 0
         if !simulationPaused { renderer?.fieldPhase = 0.0 }
-        renderer?.behaviorEffectCode = behaviorEffectCode(for: currentBehaviorMode)
+        renderer?.behaviorEffectCode = effectiveBehaviorEffectCode(for: currentBehaviorMode)
 
         writeRuntimeState(source: "spacebar")
         writeControlState(extra: [
@@ -2804,7 +2924,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // RMU_V1_3D2_WRITEPRESET_BEHAVIOR_EFFECT
         currentBehaviorMode = behavior
         currentRespawn = respawn
-        renderer?.behaviorEffectCode = behaviorEffectCode(for: behavior)
+        renderer?.geospatialRespawnOnCapture = respawn
+        renderer?.behaviorEffectCode = effectiveBehaviorEffectCode(for: behavior)
         renderer?.fieldPhase = 0.0
         simulationPaused = readRuntimePausedFromFile()
         renderer?.geospatialSimulationPaused = simulationPaused ? 1 : 0
@@ -2929,6 +3050,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         state["behavior_mode"] = currentBehaviorMode
         state["behavior_source"] = behaviorSource
         state["behavior_lock"] = behaviorLock
+        state["behavior_enabled"] = currentBehaviorEnabled
+        state["behavior_effect_code"] = renderer?.behaviorEffectCode ?? 0
+        state["behavior_bypass_authority"] = "renderer_shift_e"
         state["behavior_timestamp_unix"] = Date().timeIntervalSince1970
         state["collapse_behavior"] = [
             "behavior_mode": currentBehaviorMode,
@@ -2979,6 +3103,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         state["bottom_panel_mode"] = hud?.bottomPanelMode ?? "field"
         state["particle_speed"] = renderer?.geospatialParticleSpeed ?? 1.0
         state["particle_mass"] = renderer?.geospatialParticleMass ?? 1.0
+        state["particle_turbulence"] = renderer?.geospatialParticleTurbulence ?? 0.0
+        state["particle_cohesion"] = renderer?.geospatialParticleCohesion ?? 0.0
         state["display_particle_limit"] = renderer?.geospatialDisplayParticleLimit ?? 70000
         state["updated_by"] = "metal_renderer_v1_3F6_control_state"
         state["timestamp_unix"] = Date().timeIntervalSince1970
@@ -3314,3 +3440,8 @@ let app = NSApplication.shared
 let delegate = AppDelegate()
 app.delegate = delegate
 app.run()
+
+
+// v1.3F7 note:
+// HUD should expose TURB = particleTurbulence and COH = particleCohesion near particle speed/mass readouts.
+// Renderer force stack should add turbulence force and cohesion force before damping and position integration.
