@@ -7,71 +7,71 @@
     {
       "clamped": true,
       "confidence": "inferred",
-      "mapped_value": 0.9005594181927414,
+      "mapped_value": 0.996487296101283,
       "mapping_function": "linear",
       "mapping_name": "crab_longitude_to_x",
       "source_column": "Longitude",
-      "source_value": -84.746427,
+      "source_value": -81.6146817,
       "target_variable": "x_coordinate"
     },
     {
       "clamped": true,
       "confidence": "inferred",
-      "mapped_value": -0.6010969196382148,
+      "mapped_value": -0.9437816893558748,
       "mapping_function": "linear",
       "mapping_name": "crab_latitude_to_z",
       "source_column": "Latitude",
-      "source_value": 28.446901,
+      "source_value": 24.7851975,
       "target_variable": "z_coordinate"
     },
     {
       "clamped": true,
       "confidence": "experimental",
-      "mapped_value": -0.7314215205804416,
+      "mapped_value": 0.7005302810376313,
       "mapping_function": "percentile_linear",
       "mapping_name": "crab_depth_to_y",
       "source_column": "Elevation",
-      "source_value": -207.53919299999984,
+      "source_value": -22.766220300000327,
       "target_variable": "y_coordinate"
     },
     {
       "clamped": true,
       "confidence": "experimental",
-      "mapped_value": 0.061766370299053616,
+      "mapped_value": 0.9686691779904998,
       "mapping_function": "percentile_linear",
       "mapping_name": "crab_depth_to_temperature_proxy",
       "source_column": "Elevation",
-      "source_value": -207.53919299999984,
+      "source_value": -22.766220300000327,
       "target_variable": "temperature_field"
     },
     {
       "clamped": true,
       "confidence": "experimental",
-      "mapped_value": 0.0,
+      "mapped_value": 0.03831441263573544,
       "mapping_function": "percentile_linear",
       "mapping_name": "crab_density_to_curvature_density",
       "source_column": "track_density",
-      "source_value": 392.0,
+      "source_value": 1634.0,
       "target_variable": "curvature_density"
     },
     {
       "clamped": true,
       "confidence": "experimental",
-      "mapped_value": 0.059289239709779167,
+      "mapped_value": 0.7752651405188157,
       "mapping_function": "percentile_linear",
       "mapping_name": "crab_depth_to_higgs_lambda",
       "source_column": "Elevation",
-      "source_value": -207.53919299999984,
+      "source_value": -22.766220300000327,
       "target_variable": "higgs_lambda_field"
     },
     {
       "clamped": true,
       "confidence": "experimental",
-      "mapped_value": 0.05,
+      "mapped_value": 0.0844829713721619,
       "mapping_function": "percentile_linear",
       "mapping_name": "crab_density_to_probability_weight",
       "source_column": "track_density",
-      "source_value": 392.0,
+      "source_value": 1634.0,
       "target_variable": "probability_weight"
     }
   ],
@@ -143,18 +143,18 @@
     "updated_by": "rmu_data_mode_default",
     "version": "1.1A"
   },
-  "sample_index": 1513,
+  "sample_index": 174587,
   "source_csv": "/Users/Joe/Documents/RealMathUniverse/data/raw/merged_navdata.csv",
   "state": {
-    "curvature_density": 0.0,
-    "higgs_lambda": 0.059289239709779167,
-    "probability_weight": 0.05,
-    "t": 1513.0,
-    "temperature_proxy": 0.061766370299053616,
-    "x": 0.9005594181927414,
-    "y": -0.7314215205804416,
-    "z": -0.6010969196382148
+    "curvature_density": 0.03831441263573544,
+    "higgs_lambda": 0.7752651405188157,
+    "probability_weight": 0.0844829713721619,
+    "t": 174587.0,
+    "temperature_proxy": 0.9686691779904998,
+    "x": 0.996487296101283,
+    "y": 0.7005302810376313,
+    "z": -0.9437816893558748
   },
-  "timestamp_unix": 1777967973.768157,
+  "timestamp_unix": 1778340323.600787,
   "version": "1.1B"
 }

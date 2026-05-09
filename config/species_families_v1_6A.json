@@ -1,0 +1,112 @@
+{
+  "version": "v1.6A_species_identity_data_contract",
+  "description": "Deterministic species/family identity assignment for each merged_navdata.csv row.",
+  "species": [
+    [
+      "crab_default",
+      0
+    ],
+    [
+      "electron",
+      1
+    ],
+    [
+      "positron",
+      1
+    ],
+    [
+      "electron_neutrino",
+      2
+    ],
+    [
+      "up_quark",
+      3
+    ],
+    [
+      "down_quark",
+      3
+    ],
+    [
+      "photon_like",
+      4
+    ],
+    [
+      "gluon_like",
+      4
+    ],
+    [
+      "higgs_excitation",
+      6
+    ],
+    [
+      "proton_like",
+      5
+    ],
+    [
+      "neutron_like",
+      5
+    ],
+    [
+      "muon",
+      1
+    ],
+    [
+      "tau",
+      1
+    ],
+    [
+      "muon_neutrino",
+      2
+    ],
+    [
+      "tau_neutrino",
+      2
+    ],
+    [
+      "strange_quark",
+      3
+    ],
+    [
+      "charm_quark",
+      3
+    ],
+    [
+      "top_quark",
+      3
+    ],
+    [
+      "bottom_quark",
+      3
+    ],
+    [
+      "W_like",
+      4
+    ],
+    [
+      "Z_like",
+      4
+    ],
+    [
+      "meson_like",
+      5
+    ]
+  ],
+  "families": {
+    "0": "crab_data_origin",
+    "1": "lepton",
+    "2": "neutrino",
+    "3": "quark",
+    "4": "boson_field_carrier",
+    "5": "composite_hadron_like",
+    "6": "higgs_field_excitation"
+  },
+  "binary_layout": {
+    "bytes_per_record": 8,
+    "fields": [
+      "uint16 species_id",
+      "uint16 family_id",
+      "float32 species_weight"
+    ],
+    "endianness": "little"
+  }
+}

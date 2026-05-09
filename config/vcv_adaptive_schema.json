@@ -1,0 +1,170 @@
+{
+  "version": "v1.5D_22_voice_split_banks",
+  "description": "Split 22-voice species banks around VCV's 16-voice poly limit. Bank A uses 16 voices. Bank B uses 6 voices.",
+  "channels": {
+    "/ch/1": {
+      "label": "probability_bank_A",
+      "role": "species 1-16 probability",
+      "range": "0-10V -> 0.0-1.0"
+    },
+    "/ch/2": {
+      "label": "radial",
+      "role": "global radial field",
+      "range": "0-10V -> 0.0-3.0"
+    },
+    "/ch/3": {
+      "label": "orbital",
+      "role": "global orbital field",
+      "range": "0-10V -> 0.0-3.0"
+    },
+    "/ch/4": {
+      "label": "vertical",
+      "role": "global vertical field",
+      "range": "0-10V -> 0.0-3.0"
+    },
+    "/ch/5": {
+      "label": "turbulence",
+      "role": "global turbulence field",
+      "range": "0-10V -> 0.0-3.0"
+    },
+    "/ch/6": {
+      "label": "shell",
+      "role": "global shell field",
+      "range": "0-10V -> 0.0-3.0"
+    },
+    "/ch/7": {
+      "label": "color_mode_bank_A",
+      "role": "species 1-16 stepped color mode",
+      "range": "0/2.5/5/7.5/10V -> modes 0-4"
+    },
+    "/ch/8": {
+      "label": "scene_index",
+      "role": "scene selector",
+      "range": "0/2/4/6/8/10V -> scenes 1-6"
+    },
+    "/ch/9": {
+      "label": "particle_speed_bank_A",
+      "role": "species 1-16 speed",
+      "range": "-5V to +5V -> -3.0 to +3.0"
+    },
+    "/ch/10": {
+      "label": "species_mass_bank_A",
+      "role": "species 1-16 mass",
+      "range": "-5V to +5V -> 0.2-5.0"
+    },
+    "/ch/11": {
+      "label": "species_mass_bank_B",
+      "role": "species 17-22 mass",
+      "range": "-5V to +5V -> 0.2-5.0"
+    },
+    "/ch/12": {
+      "label": "particle_turbulence_bank_A",
+      "role": "species 1-16 particle turbulence",
+      "range": "-5V to +5V -> 0.0-3.0"
+    },
+    "/ch/13": {
+      "label": "particle_cohesion_bank_A",
+      "role": "species 1-16 cohesion",
+      "range": "-5V to +5V -> 0.0-3.0"
+    },
+    "/ch/14": {
+      "label": "gravity_well_position_vec4",
+      "role": "X/Y/Z/T first four voices",
+      "range": "-5V to +5V -> -1.0 to +1.0"
+    },
+    "/ch/15": {
+      "label": "gravity_well_strength",
+      "role": "global strength",
+      "range": "0-10V -> scaled/clamped"
+    },
+    "/ch/16": {
+      "label": "species_color_hsl_bank_A",
+      "role": "species 1-16 color HSL spectrum",
+      "range": "0-10V"
+    },
+    "/ch/17": {
+      "label": "species_color_hsl_bank_B",
+      "role": "species 17-22 color HSL spectrum",
+      "range": "0-10V"
+    },
+    "/ch/28": {
+      "label": "probability_bank_B",
+      "role": "species 17-22 probability",
+      "range": "0-10V -> 0.0-1.0"
+    },
+    "/ch/29": {
+      "label": "color_mode_bank_B",
+      "role": "species 17-22 stepped color mode",
+      "range": "0/2.5/5/7.5/10V -> modes 0-4"
+    },
+    "/ch/30": {
+      "label": "particle_speed_bank_B",
+      "role": "species 17-22 speed",
+      "range": "-5V to +5V -> -3.0 to +3.0"
+    },
+    "/ch/31": {
+      "label": "particle_turbulence_bank_B",
+      "role": "species 17-22 particle turbulence",
+      "range": "-5V to +5V -> 0.0-3.0"
+    },
+    "/ch/32": {
+      "label": "particle_cohesion_bank_B",
+      "role": "species 17-22 cohesion",
+      "range": "-5V to +5V -> 0.0-3.0"
+    }
+  },
+  "split_bank_contract": {
+    "probability": [
+      "/ch/1",
+      "/ch/28"
+    ],
+    "color_mode": [
+      "/ch/7",
+      "/ch/29"
+    ],
+    "particle_speed": [
+      "/ch/9",
+      "/ch/30"
+    ],
+    "particle_mass": [
+      "/ch/10",
+      "/ch/11"
+    ],
+    "particle_turbulence": [
+      "/ch/12",
+      "/ch/31"
+    ],
+    "particle_cohesion": [
+      "/ch/13",
+      "/ch/32"
+    ],
+    "species_color_hsl": [
+      "/ch/16",
+      "/ch/17"
+    ]
+  },
+  "species": [
+    "crab_default",
+    "electron",
+    "positron",
+    "electron_neutrino",
+    "up_quark",
+    "down_quark",
+    "photon_like",
+    "gluon_like",
+    "higgs_excitation",
+    "proton_like",
+    "neutron_like",
+    "muon",
+    "tau",
+    "muon_neutrino",
+    "tau_neutrino",
+    "strange_quark",
+    "charm_quark",
+    "top_quark",
+    "bottom_quark",
+    "W_like",
+    "Z_like",
+    "meson_like"
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "version": "v1.6C2_behavior_authority_gate_repair",
+  "installed_at_unix": 1778145265.7766972,
+  "project_root": "/Users/Joe/Documents/RealMathUniverse",
+  "normal_run": "./scripts/run_metal_session.sh preview 1920x1080",
+  "validator": "python3 tools/validate_v1_6C2_behavior_authority_gate_repair.py"
+}

@@ -1,0 +1,5 @@
+RealMathUniverse v1.4B10 Adaptive /ch/13 /ch/14 Value Propagation
+project_root=/Users/Joe/Documents/RealMathUniverse
+
+BACKUP /Users/Joe/Documents/RealMathUniverse/metal_renderer/Sources/RealMathUniverseMetalRenderer/main.swift -> /Users/Joe/Documents/RealMathUniverse/output/backups/v1_4B10_ch13_ch14_value_propagation_20260506_045301/main.swift
+INSTALL FAILED: could not find Swift VCV JSON parsing function containing json + vcvRawChannelValues + vcvChannelValues

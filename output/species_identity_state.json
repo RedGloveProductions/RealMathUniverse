@@ -1,0 +1,197 @@
+{
+  "version": "v1.6A_species_identity_data_contract",
+  "timestamp_unix": 1778137418.9735072,
+  "project_root": "/Users/Joe/Documents/RealMathUniverse",
+  "input_csv": "/Users/Joe/Documents/RealMathUniverse/data/raw/merged_navdata.csv",
+  "output_csv": "/Users/Joe/Documents/RealMathUniverse/data/processed/merged_navdata_species_v1_6A.csv",
+  "output_bin": "/Users/Joe/Documents/RealMathUniverse/data/processed/species_identity_v1_6A.bin",
+  "schema": "/Users/Joe/Documents/RealMathUniverse/config/species_families_v1_6A.json",
+  "record_count": 99966,
+  "bytes_per_record": 8,
+  "binary_layout": [
+    "uint16 species_id",
+    "uint16 family_id",
+    "float32 species_weight"
+  ],
+  "columns": {
+    "latitude": "Latitude",
+    "longitude": "Longitude",
+    "depth_or_elevation": "Elevation",
+    "density": null
+  },
+  "stats": {
+    "depth_p05": 18.23711479999973,
+    "depth_p50": 42.78975239999987,
+    "depth_p95": 159.63302789999983,
+    "density_p05": 0.0,
+    "density_p50": 0.0,
+    "density_p95": 0.0
+  },
+  "species_counts": {
+    "crab_default": 3531,
+    "electron": 14004,
+    "positron": 14296,
+    "electron_neutrino": 288,
+    "up_quark": 4174,
+    "down_quark": 4428,
+    "photon_like": 14126,
+    "gluon_like": 4261,
+    "higgs_excitation": 1274,
+    "proton_like": 4268,
+    "neutron_like": 4252,
+    "muon": 14193,
+    "tau": 1317,
+    "muon_neutrino": 299,
+    "tau_neutrino": 266,
+    "strange_quark": 4315,
+    "charm_quark": 1249,
+    "top_quark": 1257,
+    "bottom_quark": 1256,
+    "W_like": 1326,
+    "Z_like": 1302,
+    "meson_like": 4284
+  },
+  "family_counts": {
+    "crab_data_origin": 3531,
+    "lepton": 43810,
+    "neutrino": 853,
+    "quark": 16679,
+    "boson_field_carrier": 21015,
+    "composite_hadron_like": 12804,
+    "higgs_field_excitation": 1274
+  },
+  "species_id_order": [
+    {
+      "species_id": 0,
+      "species_name": "crab_default",
+      "family_id": 0,
+      "family_name": "crab_data_origin"
+    },
+    {
+      "species_id": 1,
+      "species_name": "electron",
+      "family_id": 1,
+      "family_name": "lepton"
+    },
+    {
+      "species_id": 2,
+      "species_name": "positron",
+      "family_id": 1,
+      "family_name": "lepton"
+    },
+    {
+      "species_id": 3,
+      "species_name": "electron_neutrino",
+      "family_id": 2,
+      "family_name": "neutrino"
+    },
+    {
+      "species_id": 4,
+      "species_name": "up_quark",
+      "family_id": 3,
+      "family_name": "quark"
+    },
+    {
+      "species_id": 5,
+      "species_name": "down_quark",
+      "family_id": 3,
+      "family_name": "quark"
+    },
+    {
+      "species_id": 6,
+      "species_name": "photon_like",
+      "family_id": 4,
+      "family_name": "boson_field_carrier"
+    },
+    {
+      "species_id": 7,
+      "species_name": "gluon_like",
+      "family_id": 4,
+      "family_name": "boson_field_carrier"
+    },
+    {
+      "species_id": 8,
+      "species_name": "higgs_excitation",
+      "family_id": 6,
+      "family_name": "higgs_field_excitation"
+    },
+    {
+      "species_id": 9,
+      "species_name": "proton_like",
+      "family_id": 5,
+      "family_name": "composite_hadron_like"
+    },
+    {
+      "species_id": 10,
+      "species_name": "neutron_like",
+      "family_id": 5,
+      "family_name": "composite_hadron_like"
+    },
+    {
+      "species_id": 11,
+      "species_name": "muon",
+      "family_id": 1,
+      "family_name": "lepton"
+    },
+    {
+      "species_id": 12,
+      "species_name": "tau",
+      "family_id": 1,
+      "family_name": "lepton"
+    },
+    {
+      "species_id": 13,
+      "species_name": "muon_neutrino",
+      "family_id": 2,
+      "family_name": "neutrino"
+    },
+    {
+      "species_id": 14,
+      "species_name": "tau_neutrino",
+      "family_id": 2,
+      "family_name": "neutrino"
+    },
+    {
+      "species_id": 15,
+      "species_name": "strange_quark",
+      "family_id": 3,
+      "family_name": "quark"
+    },
+    {
+      "species_id": 16,
+      "species_name": "charm_quark",
+      "family_id": 3,
+      "family_name": "quark"
+    },
+    {
+      "species_id": 17,
+      "species_name": "top_quark",
+      "family_id": 3,
+      "family_name": "quark"
+    },
+    {
+      "species_id": 18,
+      "species_name": "bottom_quark",
+      "family_id": 3,
+      "family_name": "quark"
+    },
+    {
+      "species_id": 19,
+      "species_name": "W_like",
+      "family_id": 4,
+      "family_name": "boson_field_carrier"
+    },
+    {
+      "species_id": 20,
+      "species_name": "Z_like",
+      "family_id": 4,
+      "family_name": "boson_field_carrier"
+    },
+    {
+      "species_id": 21,
+      "species_name": "meson_like",
+      "family_id": 5,
+      "family_name": "composite_hadron_like"
+    }
+  ]
+}

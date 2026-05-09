@@ -1,0 +1,23 @@
+{
+  "version": "v1.6C1_renderer_color_behavior_authority_repair",
+  "ok": true,
+  "timestamp_unix": 1778143586.177741,
+  "project_root": "/Users/Joe/Documents/RealMathUniverse",
+  "backup": "/Users/Joe/Documents/RealMathUniverse/backups/v1.6C1_renderer_color_behavior_authority_repair/main.swift.20260507_044619.bak",
+  "swift_build_ok": true,
+  "markers": {
+    "RMU_V1_6C_VERTEX_SPECIES_COLOR_ARGS_BEGIN": true,
+    "RMU_V1_6C_VERTEX_SPECIES_COLOR_SAMPLE_BEGIN": true,
+    "RMU_V1_6C_VERTEX_SPECIES_COLOR_MODE": true,
+    "RMU_V1_6C_RENDER_SPECIES_COLOR_BINDINGS_BEGIN": true,
+    "RMU_V1_6C_OPTIONAL_BEHAVIOR_CHANNEL_AUTHORITY_BEGIN": true
+  },
+  "flags": [
+    "vertex_species_color_args_inserted=True",
+    "vertex_species_color_sample_inserted=True",
+    "vertex_color_modes_3_4_species_override=True",
+    "render_species_color_bindings_inserted=True",
+    "optional_behavior_channel_authority_inserted=True",
+    "console_hint_inserted=True"
+  ]
+}

@@ -1,0 +1,5 @@
+RealMathUniverse v1.4B1 Gravity Bridge Sync Fix
+project_root=/Users/Joe/Documents/RealMathUniverse
+REPLACED bridge with clean v1.4B1 bridge
+PATCH Swift: added gravity variables
+INSTALL FAILED: could not patch Metal signature

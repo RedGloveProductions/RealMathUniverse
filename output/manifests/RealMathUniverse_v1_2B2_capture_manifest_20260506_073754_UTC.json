@@ -1,0 +1,72 @@
+{
+  "window_mode" : "standard",
+  "session_id" : "20260506_073754_UTC",
+  "renderer_version" : "v1.2B3",
+  "project_root" : "\/Users\/Joe\/Documents\/RealMathUniverse",
+  "capture_count" : 1,
+  "last_updated_utc" : "2026-05-06T07:40:13Z",
+  "captures" : [
+    {
+      "relative_path" : "output\/screenshots\/metal\/20260506_073754_UTC\/RealMathUniverse_v1_3F6_geospatial_live_running_classic_99k_window_20260506_074012_UTC.png",
+      "horizon_ring_enabled" : true,
+      "particle_mass" : 3.3225760459899902,
+      "center_marker_enabled" : true,
+      "point_count" : 99966,
+      "source_particle_count" : 99966,
+      "frame_time_ms" : 8.7119340896606445,
+      "active_scene_preset" : "manual",
+      "clean_capture" : false,
+      "vcv_status" : "external 0.0s",
+      "sim_frame" : 0,
+      "runtime_mode" : "geospatial_live_running",
+      "selected_field_layer" : "orbital",
+      "fps" : 60.05787281988686,
+      "sim_time" : 0,
+      "particle_speed" : 0.091076508164405823,
+      "auto_camera_enabled" : false,
+      "curvature_overlay_enabled" : true,
+      "camera" : {
+        "rotation_radians" : 0,
+        "pan_y" : 0,
+        "manual_world_radius" : 26.751241683959961,
+        "pan_x" : 0
+      },
+      "window_mode" : "standard",
+      "late_frame_warning" : false,
+      "filename" : "RealMathUniverse_v1_3F6_geospatial_live_running_classic_99k_window_20260506_074012_UTC.png",
+      "behavior_mode" : "geospatial_static_paused",
+      "trail_length" : 12,
+      "burst_interval_setting" : 0.40000000000000002,
+      "selected_field_layer_weight" : 1.3807967901229858,
+      "presentation_mode" : false,
+      "grid_enabled" : false,
+      "timestamp_utc" : "2026-05-06T07:40:13Z",
+      "timestamp_unix" : 1778053213.0122519,
+      "probability_source" : "vcv",
+      "burst_count_setting" : 5,
+      "field_layer_summary" : "R:0.65 O:1.38 V:1.18 T:1.25 S:0.47",
+      "field_layers_enabled" : true,
+      "field_layer_enabled_flags" : [
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "burst_index" : 1,
+      "field_layer_weights" : [
+        0.6539604663848877,
+        1.3807967901229858,
+        1.1770733594894409,
+        1.2526988983154297,
+        0.46504628658294678
+      ],
+      "color_mode" : "classic",
+      "probability_overlay_enabled" : true,
+      "render_sample_count" : 99966,
+      "trails_enabled" : false,
+      "active_visual_state_name" : "manual",
+      "burst_total" : 1
+    }
+  ]
+}

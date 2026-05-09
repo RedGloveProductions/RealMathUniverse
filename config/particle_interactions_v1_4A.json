@@ -1,0 +1,21 @@
+{
+  "version": "1.4A",
+  "rules": [
+    {
+      "name": "electron_positron_annihilation_stub",
+      "enabled": false
+    },
+    {
+      "name": "quark_binding_stub",
+      "enabled": false
+    },
+    {
+      "name": "proton_like_approx",
+      "enabled": true
+    },
+    {
+      "name": "neutron_like_approx",
+      "enabled": true
+    }
+  ]
+}

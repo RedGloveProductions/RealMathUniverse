@@ -1,0 +1,11 @@
+RealMathUniverse v1.3F9 Particle Respawn + Behavior Bypass
+project_root=/Users/Joe/Documents/RealMathUniverse
+swift_path=/Users/Joe/Documents/RealMathUniverse/metal_renderer/Sources/RealMathUniverseMetalRenderer/main.swift
+
+BACKUP /Users/Joe/Documents/RealMathUniverse/metal_renderer/Sources/RealMathUniverseMetalRenderer/main.swift -> /Users/Joe/Documents/RealMathUniverse/output/backups/v1_3F9_20260506_005000/main.swift
+CLEANUP no known bad prior lines found
+PATCH MetalRenderer respawn runtime variables
+PATCH Metal kernel respawn args after v1.3F8 args
+SKIP Metal VCV-only turbulence/cohesion force pair before behavior block: anchor not found
+
+INSTALL FAILED: SKIP Metal VCV-only turbulence/cohesion force pair before behavior block: anchor not found

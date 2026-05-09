@@ -1,0 +1,14 @@
+{
+  "version": "v1.6C2_behavior_authority_gate_repair",
+  "ok": true,
+  "timestamp_unix": 1778145265.1506612,
+  "project_root": "/Users/Joe/Documents/RealMathUniverse",
+  "backup": "/Users/Joe/Documents/RealMathUniverse/backups/v1.6C2_behavior_authority_gate_repair/main.swift.20260507_051418.bak",
+  "swift_build_ok": true,
+  "replacements": 1,
+  "markers": {
+    "RMU_V1_6C2_BEHAVIOR_AUTHORITY_GATE_REPAIR": true,
+    "behavior_gate_threshold_5v": true,
+    "manual_shift_e_preserved": true
+  }
+}

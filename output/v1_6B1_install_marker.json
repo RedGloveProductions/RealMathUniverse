@@ -1,0 +1,8 @@
+{
+  "version": "v1.6B1_renderer_species_identity_metal_repair",
+  "installed_at_unix": 1778142021.355812,
+  "project_root": "/Users/Joe/Documents/RealMathUniverse",
+  "normal_run": "./scripts/run_metal_session.sh preview 1920x1080",
+  "validator": "python3 tools/validate_v1_6B1_renderer_species_identity.py",
+  "monitor": "python3 tools/monitor_v1_6B1_species_identity_metal.py"
+}

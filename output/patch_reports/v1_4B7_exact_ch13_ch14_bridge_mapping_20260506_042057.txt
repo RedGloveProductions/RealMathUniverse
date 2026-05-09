@@ -1,0 +1,22 @@
+RealMathUniverse v1.4B7 Exact /ch/13 /ch/14 Bridge Mapping
+project_root=/Users/Joe/Documents/RealMathUniverse
+
+BACKUP /Users/Joe/Documents/RealMathUniverse/src/control/vcv_osc_bridge.py -> /Users/Joe/Documents/RealMathUniverse/output/backups/v1_4B7_exact_ch13_ch14_bridge_mapping_20260506_042057/vcv_osc_bridge.py
+Removed previous label overrides: ch13=1, ch14=1
+Inserted CHANNEL_LABELS[13]/[14] before class VCVOSCBridge
+bridge py_compile: PASS
+UPDATED /Users/Joe/Documents/RealMathUniverse/src/control/vcv_osc_bridge.py
+WROTE scripts/verify_v1_4B7_exact_bridge_mapping.py
+WROTE docs/VERSION_v1_4B7_EXACT_CH13_CH14_BRIDGE_MAPPING.md
+
+INSTALL COMPLETE
+Restart cleanly:
+  cd /Users/Joe/Documents/RealMathUniverse
+  pkill -f vcv_osc_bridge.py 2>/dev/null || true
+  pkill -f RealMathUniverseMetalRenderer 2>/dev/null || true
+  rm -f output/vcv_state.json output/control_state.json
+  source .venv/bin/activate
+  ./scripts/run_metal_session.sh preview 1920x1080
+Verify after restart:
+  python3 scripts/verify_v1_4B7_exact_bridge_mapping.py
+Report: /Users/Joe/Documents/RealMathUniverse/output/patch_reports/v1_4B7_exact_ch13_ch14_bridge_mapping_20260506_042057.txt

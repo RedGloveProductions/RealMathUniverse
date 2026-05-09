@@ -1,0 +1,11 @@
+{
+  "version": "v1.6F_pre_encode_vcv_authority",
+  "ok": true,
+  "backup": "/Users/Joe/Documents/RealMathUniverse/backups/v1_6F_pre_encode_vcv_authority/main.swift.20260507_085421.bak",
+  "timestamp_unix": 1778158469.108046,
+  "notes": [
+    "Applies /ch/8 field recipe immediately before compute/render encode.",
+    "Applies /ch/18 behavior code immediately before compute/render encode when /ch/19 >= 5V.",
+    "Prevents old controller/runtime paths from stomping live VCV behavior."
+  ]
+}

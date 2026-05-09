@@ -535,7 +535,8 @@ final class HUDOverlayController: NSObject {
     func topStatusAttributed(utc: String, fileStatus: String, datasetLoaded: Bool, datasetFallback: Bool, couplingEnabled: Bool, alertCount: Int, renderer: MetalRenderer) -> NSAttributedString {
         let a = NSMutableAttributedString()
         append(a, " UTC \(utc)   ", color: rmuDim(), font: monoFont(size: 12))
-        append(a, "RUN RMU-1.3F6   ", color: rmuCyan(), font: monoFont(size: 12))
+        // RMU_V1_6G_TOP_HUD_VERSION
+        append(a, "RUN RMU-1.6G4   ", color: rmuCyan(), font: monoFont(size: 12))
         append(a, fileStatus, color: statusColor(fileStatus), font: monoFont(size: 12, weight: .semibold))
         append(a, "      RMU TACTICAL RESEARCH CONSOLE      ", color: rmuText(), font: titleFont(size: 22))
         append(a, "DATA ", color: rmuDim(), font: monoFont(size: 12))
@@ -544,6 +545,15 @@ final class HUDOverlayController: NSObject {
         append(a, renderer.vcvDisplayStatus(), color: statusColor(renderer.vcvDisplayStatus()), font: monoFont(size: 12, weight: .semibold))
         append(a, "  COUPLING ", color: rmuDim(), font: monoFont(size: 12))
         append(a, couplingEnabled ? "ON" : "OFF", color: couplingEnabled ? rmuGreen() : rmuYellow(), font: monoFont(size: 12, weight: .semibold))
+
+        // RMU_V1_6G_TOP_BEHAVIOR_AUTHORITY_HUD
+        let behaviorHUDCode = renderer.rmuV16GEffectiveBehaviorCode()
+        let behaviorHUDEnabled = (renderer.rmuV16DBehaviorAuthorityActive || renderer.geospatialBehaviorEnabled) && behaviorHUDCode != 0
+        append(a, "  BEHAVIOR ", color: rmuDim(), font: monoFont(size: 12))
+        append(a, behaviorHUDEnabled ? "ON" : "OFF", color: behaviorHUDEnabled ? rmuGreen() : rmuRed(), font: monoFont(size: 12, weight: .bold))
+        append(a, " CODE \(behaviorHUDCode)", color: behaviorHUDEnabled ? rmuCyan() : rmuRed(), font: monoFont(size: 12, weight: .semibold))
+        append(a, " \(renderer.rmuV16GBehaviorAuthorityLabel())", color: renderer.rmuV16DBehaviorAuthorityActive ? rmuGreen() : rmuAmber(), font: monoFont(size: 12, weight: .semibold))
+
         append(a, "  ALERTS \(alertCount)", color: alertCount == 0 ? rmuGreen() : (alertCount < 3 ? rmuYellow() : rmuRed()), font: monoFont(size: 12, weight: .semibold))
         return a
     }
@@ -568,16 +578,23 @@ final class HUDOverlayController: NSObject {
         append(a, "\n", color: rmuText())
 
         append(a, sectionTitle("PHYSICS"), color: rmuCyan(), font: monoFont(size: 13, weight: .semibold))
-        appendKV(a, "behavior", runtimeBehaviorLabel(), valueColor: rmuAmber())
-        appendKV(a, "runtime", runtimeModeLabel(), valueColor: statusColor(runtimeStatusLabel()))
-        appendKV(a, "armed", runtimeArmedLabel(), valueColor: statusColor(runtimeArmedLabel()))
-        appendKV(a, "particles", "\(frameLoader.latestPointCount)")
-        appendKV(a, "source count", "\(frameLoader.sourceParticleCount)")
+        // RMU_V1_6G4_LEFT_PHYSICS_AUTHORITY_PANEL
+        appendKV(a, "behavior", renderer.rmuV16GBehaviorHUDSummary(), valueColor: renderer.rmuV16DBehaviorAuthorityActive ? rmuGreen() : rmuAmber())
+        appendKV(a, "behavior src", renderer.rmuV16GBehaviorAuthorityLabel(), valueColor: renderer.rmuV16DBehaviorAuthorityActive ? rmuGreen() : rmuAmber())
+        appendKV(a, "beh code", "\(renderer.rmuV16GEffectiveBehaviorCode())", valueColor: renderer.rmuV16DBehaviorAuthorityActive ? rmuCyan() : rmuAmber())
+        appendKV(a, "gate", String(format: "%.2fV", renderer.rmuV16DBehaviorAuthorityGate), valueColor: renderer.rmuV16DBehaviorAuthorityActive ? rmuGreen() : rmuRed())
+        appendKV(a, "field auth", renderer.rmuV16GFieldAuthoritySummary(), valueColor: rmuCyan())
         appendKV(a, "field layers", renderer.fieldLayersEnabled ? "ON" : "OFF", valueColor: statusColor(renderer.fieldLayersEnabled ? "ON" : "OFF"))
         appendKV(a, "selected", renderer.selectedFieldLayerName.uppercased(), valueColor: rmuAmber())
-        appendKV(a, "recipe", renderer.fieldLayerSummary())
-        append(a, "\n", color: rmuText())
-
+        appendKV(a, "selected weight", String(format: "%.2f", renderer.selectedFieldLayerWeight), valueColor: rmuAmber())
+        appendKV(a, "recipe", renderer.rmuV16GFieldRecipeSummary(), valueColor: rmuCyan())
+        appendKV(a, "apply", "v1.6F pre-encode", valueColor: rmuGreen())
+        for i in 0..<renderer.fieldLayerNames.count {
+            let name = renderer.fieldLayerNames[i]
+            let val = renderer.fieldLayerWeights[i]
+            let enabled = renderer.fieldLayerEnabled[i]
+            appendKV(a, name, String(format: "%.2f  %@", val, enabled ? "ON" : "OFF"), valueColor: enabled ? rmuGreen() : rmuDim())
+        }
         append(a, sectionTitle("DATASET"), color: rmuCyan(), font: monoFont(size: 13, weight: .semibold))
         if let ds = dataset {
             appendKV(a, "mode", stringValue(ds["mode"]), valueColor: rmuAmber())
@@ -702,10 +719,13 @@ final class HUDOverlayController: NSObject {
     }
 
     func bottomField(_ a: NSMutableAttributedString, renderer: MetalRenderer) {
+        // RMU_V1_6G_PHYSICS_FIELD_BEHAVIOR_AUTHORITY_PANEL
+        appendKV(a, "behavior", renderer.rmuV16GBehaviorHUDSummary(), valueColor: renderer.rmuV16DBehaviorAuthorityActive ? rmuGreen() : rmuAmber())
+        appendKV(a, "field auth", renderer.rmuV16GFieldAuthoritySummary(), valueColor: rmuCyan())
         appendKV(a, "field layers", renderer.fieldLayersEnabled ? "ON" : "OFF", valueColor: statusColor(renderer.fieldLayersEnabled ? "ON" : "OFF"))
         appendKV(a, "selected", renderer.selectedFieldLayerName.uppercased(), valueColor: rmuAmber())
         appendKV(a, "selected weight", String(format: "%.2f", renderer.selectedFieldLayerWeight), valueColor: rmuAmber())
-        appendKV(a, "recipe", renderer.fieldLayerSummary())
+        appendKV(a, "recipe", renderer.rmuV16GFieldRecipeSummary())
         for i in 0..<renderer.fieldLayerNames.count {
             let name = renderer.fieldLayerNames[i]
             let val = renderer.fieldLayerWeights[i]
@@ -731,6 +751,17 @@ final class HUDOverlayController: NSObject {
         appendKV(a, "display", renderer.vcvDisplayStatus(), valueColor: statusColor(renderer.vcvDisplayStatus()))
         appendKV(a, "source", renderer.probabilitySource, valueColor: rmuAmber())
         appendKV(a, "field control", renderer.vcvFieldControlEnabled ? "ON" : "OFF", valueColor: statusColor(renderer.vcvFieldControlEnabled ? "ON" : "OFF"))
+        // RMU_V1_6G_HUD_COMPACT_VCV_AUTHORITY_SCHEMA
+        appendKV(a, "VCV", renderer.vcvDisplayStatus(), valueColor: statusColor(renderer.vcvDisplayStatus()))
+        appendKV(a, "authority", renderer.rmuV16GVCVAuthoritySummary(), valueColor: renderer.rmuV16DBehaviorAuthorityActive ? rmuGreen() : rmuAmber())
+        appendKV(a, "bridge", "v1.6D1 direct /ch/1-/ch/32", valueColor: rmuCyan())
+        appendKV(a, "apply", "v1.6F pre-encode", valueColor: rmuGreen())
+        appendKV(a, "behavior", renderer.rmuV16GBehaviorHUDSummary(), valueColor: renderer.rmuV16DBehaviorAuthorityActive ? rmuGreen() : rmuAmber())
+        appendKV(a, "field", renderer.rmuV16GFieldAuthoritySummary(), valueColor: rmuCyan())
+        appendKV(a, "species id", renderer.rmuV16GSpeciesIdentitySummary(), valueColor: renderer.rmuV16BSpeciesIdentityLoaded ? rmuGreen() : rmuYellow())
+        appendKV(a, "color", renderer.rmuV16GColorAuthoritySummary(), valueColor: rmuCyan())
+        appendKV(a, "banks", renderer.rmuBankStatusLine(), valueColor: rmuGreen())
+        appendKV(a, "gravity", renderer.rmuGravityVec4Summary(), valueColor: rmuYellow())
         appendKV(a, "safe mode", renderer.vcvSafeModeEnabled ? "ON" : "OFF", valueColor: statusColor(renderer.vcvSafeModeEnabled ? "ON" : "OFF"))
         appendKV(a, "clamp", renderer.vcvLastClampEvent)
         append(a, renderer.vcvChannelCompactSummary(), color: rmuCyan())
@@ -804,6 +835,14 @@ final class HUDOverlayController: NSObject {
 }
 
 
+
+// RMU_V1_4B8_HUD_LABEL_SYNC_HELPER
+func rmuVCVDisplayLabel(_ channel: Int, fallback: String) -> String {
+    if channel == 13 { return "gravity_well_position" }
+    if channel == 14 { return "gravity_well_strength" }
+    return fallback
+}
+
 final class MetalRenderer: NSObject, MTKViewDelegate {
     let device: MTLDevice
     let commandQueue: MTLCommandQueue
@@ -851,27 +890,90 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
     var probabilitySource = "internal"
     var vcvLastUpdateUnix: Double = 0.0
     var vcvLastReadTime: Double = 0.0
-    var vcvFieldControlEnabled = false
+    var vcvFieldControlEnabled = true // RMU_V1_5A9: VCV control defaults ON; state freshness decides ACTIVE/STALE
     var vcvLastValues = "none"
     var vcvMonitorVisible = true
     var vcvSmoothingAmount: Float = 0.22
     var vcvChannelLabels: [String] = [
         "probability", "radial", "orbital", "vertical", "turbulence", "shell", "color", "scene",
-        "particle_speed", "particle_mass", "particle_turbulence", "particle_cohesion", "aux_13", "aux_14", "aux_15", "aux_16",
+        "particle_speed", "particle_mass", "particle_turbulence", "particle_cohesion", "gravity_well_position", "gravity_well_strength", "aux_15", "aux_16",
 
         "aux_17", "aux_18", "aux_19", "aux_20", "aux_21", "aux_22", "aux_23", "aux_24",
         "aux_25", "aux_26", "aux_27", "aux_28", "aux_29", "aux_30", "aux_31", "aux_32"
     ]
     var vcvChannelTargets: [String] = [
         "probability_value", "field_layer_weights[0]", "field_layer_weights[1]", "field_layer_weights[2]", "field_layer_weights[3]", "field_layer_weights[4]", "color_mode", "scene_index",
-        "particle_speed", "particle_mass", "particle_turbulence", "particle_cohesion", "aux_13", "aux_14", "aux_15", "aux_16",
+        "particle_speed", "particle_mass", "particle_turbulence", "particle_cohesion", "gravity_well_position", "gravity_well_strength", "aux_15", "aux_16",
         "aux_17", "aux_18", "aux_19", "aux_20", "aux_21", "aux_22", "aux_23", "aux_24",
         "aux_25", "aux_26", "aux_27", "aux_28", "aux_29", "aux_30", "aux_31", "aux_32"
     ]
     var vcvChannelEnabled: [Bool] = Array(repeating: true, count: 32)
     var vcvChannelValues: [Float] = [0, 0, 0, 0, 0, 0, 0, 0, 1.0, 1.0] + Array(repeating: 0.0, count: 22)
+
+    // RMU_V1_5C_POLY_SPECIES_CONTROL_STATE
+    var particleSpeciesProbability: [Float] = Array(repeating: 0.0, count: 22)
+    var particleSpeciesColorMode: [Int32] = Array(repeating: 0, count: 22)
+    var particleSpeciesSpeed: [Float] = Array(repeating: 0.0, count: 22)
+    var particleSpeciesMass: [Float] = Array(repeating: 2.6, count: 22)
+    var particleSpeciesMassRaw: [Float] = Array(repeating: 0.0, count: 22)
+    var particleSpeciesTurbulence: [Float] = Array(repeating: 0.0, count: 22)
+    var particleSpeciesCohesion: [Float] = Array(repeating: 0.0, count: 22)
+    var particleSpeciesColorHSL: [Float] = Array(repeating: 0.0, count: 22 * 3)
+    var particleSpeciesColorRGB: [Float] = Array(repeating: 1.0, count: 22 * 3)
+    var particleSpeciesProbabilityVoiceCount: Int = 0
+    var particleSpeciesColorModeVoiceCount: Int = 0
+    var particleSpeciesSpeedVoiceCount: Int = 0
+    var particleSpeciesMassVoiceCount: Int = 0
+    var particleSpeciesTurbulenceVoiceCount: Int = 0
+    var particleSpeciesCohesionVoiceCount: Int = 0
+    var particleSpeciesColorVoiceCount: Int = 0
+    var gravityWellPositionVec4: [Float] = Array(repeating: 0.0, count: 4)
+    var vcvSceneIndex: Int = 1
+
+
     var vcvRawChannelValues: [Float] = Array(repeating: 0.0, count: 32)
-    var vcvSafeModeEnabled = true
+    // RMU_V1_6B_SPECIES_IDENTITY_STATE_BEGIN
+    var rmuV16BSpeciesIdentityLoaded: Bool = false
+    var rmuV16BSpeciesIdentityRecordCount: Int = 0
+    var rmuV16BSpeciesIdentityParticleCount: Int = 0
+    var rmuV16BSpeciesIdentityStatus: String = "not loaded"
+    var rmuV16BSpeciesIdentityLastError: String = "none"
+    var rmuV16BSpeciesControlEnabled: Float = 1.0
+    var rmuV16BSpeciesIDCPU: [UInt32] = []
+    var rmuV16BFamilyIDCPU: [UInt32] = []
+    var rmuV16BSpeciesWeightCPU: [Float] = []
+    var rmuV16BSpeciesIDBuffer: MTLBuffer? = nil
+    var rmuV16BFamilyIDBuffer: MTLBuffer? = nil
+    var rmuV16BSpeciesWeightBuffer: MTLBuffer? = nil
+    // RMU_V1_6B_SPECIES_IDENTITY_STATE_END
+    // RMU_V1_5F_RENDERER_VCV_AUTHORITY_FIX
+    var vcvSafeModeEnabled = false
+
+    // RMU_V1_5G_RENDERER_SCENE_COLOR_FIELD_AUTHORITY_STATE
+    var vcvAuthoritySceneIndex: Int = 1
+    var vcvAuthorityColorMode: Int32 = 0
+    var vcvAuthorityFieldLayerIndex: Int = 0
+    var vcvAuthorityLastAppliedUnix: Double = 0.0
+
+    // RMU_V1_5E_RENDERER_HUD_VCV_PANEL_CLEANUP_STATE
+    var vcvCompactHUDMode: Bool = true
+    var vcvDetailPanelVisible: Bool = false
+    var vcvDetailPageIndex: Int = 0
+
+    var particleSpeciesProbabilityVoiceCountA: Int = 0
+    var particleSpeciesProbabilityVoiceCountB: Int = 0
+    var particleSpeciesColorModeVoiceCountA: Int = 0
+    var particleSpeciesColorModeVoiceCountB: Int = 0
+    var particleSpeciesSpeedVoiceCountA: Int = 0
+    var particleSpeciesSpeedVoiceCountB: Int = 0
+    var particleSpeciesMassVoiceCountA: Int = 0
+    var particleSpeciesMassVoiceCountB: Int = 0
+    var particleSpeciesTurbulenceVoiceCountA: Int = 0
+    var particleSpeciesTurbulenceVoiceCountB: Int = 0
+    var particleSpeciesCohesionVoiceCountA: Int = 0
+    var particleSpeciesCohesionVoiceCountB: Int = 0
+    var particleSpeciesColorVoiceCountA: Int = 0
+    var particleSpeciesColorVoiceCountB: Int = 0
     var vcvLastClampEvent = "none"
 
     var trailsEnabled = false
@@ -901,6 +1003,11 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
     var geospatialBehaviorEnabled: Bool = true
     var geospatialRespawnOnCapture: Bool = false
 
+    // RMU_V1_6D2_BEHAVIOR_APPLY_AUTHORITY_STATE
+    var rmuV16DBehaviorAuthorityActive: Bool = false
+    var rmuV16DBehaviorAuthorityCode: Int32 = 1
+    var rmuV16DBehaviorAuthorityGate: Float = 0.0
+
     // RMU v1.3F6: Lorenz/VCV bipolar controls.
     // /ch/9  particle_speed: -5V..+5V -> -3.0..+3.0 motion scalar.
     // /ch/10 particle_mass:  -5V..+5V -> 0.20..5.00 positive inertia.
@@ -909,6 +1016,8 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
     var geospatialParticleMass: Float = 1.0
     var geospatialParticleTurbulence: Float = 0.0
     var geospatialParticleCohesion: Float = 0.0
+    var geospatialGravityWellPosition: Float = 0.0
+    var geospatialGravityWellStrength: Float = 6.0
     var geospatialAnchorStrength: Float = 0.0  // deprecated compatibility field
     var geospatialBehaviorGain: Float = 1.0
     var geospatialDisplayParticleLimit: Int = 45000
@@ -943,6 +1052,103 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
     var probabilityHaloCount: Int = 0
 
     weak var hud: HUDOverlayController?
+
+    // RMU_V1_5E_RENDERER_HUD_VCV_PANEL_CLEANUP_HELPERS
+    func rmuBankStatus(_ a: Int, _ b: Int) -> String {
+        return "\(a)+\(b)"
+    }
+
+    func rmuBankStatusLine() -> String {
+        return "P \(rmuBankStatus(particleSpeciesProbabilityVoiceCountA, particleSpeciesProbabilityVoiceCountB))  " +
+            "CMode \(rmuBankStatus(particleSpeciesColorModeVoiceCountA, particleSpeciesColorModeVoiceCountB))  " +
+            "S \(rmuBankStatus(particleSpeciesSpeedVoiceCountA, particleSpeciesSpeedVoiceCountB))  " +
+            "M \(rmuBankStatus(particleSpeciesMassVoiceCountA, particleSpeciesMassVoiceCountB))  " +
+            "T \(rmuBankStatus(particleSpeciesTurbulenceVoiceCountA, particleSpeciesTurbulenceVoiceCountB))  " +
+            "Coh \(rmuBankStatus(particleSpeciesCohesionVoiceCountA, particleSpeciesCohesionVoiceCountB))  " +
+            "Color \(rmuBankStatus(particleSpeciesColorVoiceCountA, particleSpeciesColorVoiceCountB))"
+    }
+
+    func rmuGravityVec4Summary() -> String {
+        let x = gravityWellPositionVec4.count > 0 ? gravityWellPositionVec4[0] : 0.0
+        let y = gravityWellPositionVec4.count > 1 ? gravityWellPositionVec4[1] : 0.0
+        let z = gravityWellPositionVec4.count > 2 ? gravityWellPositionVec4[2] : 0.0
+        let t = gravityWellPositionVec4.count > 3 ? gravityWellPositionVec4[3] : 0.0
+        return String(format: "G4 %.2f %.2f %.2f %.2f", x, y, z, t)
+    }
+
+
+    // RMU_V1_5F_COLOR_MODE_DISPLAY_HELPER
+    func rmuVCVColorModeDisplayName() -> String {
+
+    // RMU_V1_5G_RENDERER_SCENE_COLOR_FIELD_AUTHORITY_HELPERS
+    func rmuApplyVCVSceneAuthority(_ scene: Int) {
+        let clampedScene = max(1, min(6, scene))
+        vcvAuthoritySceneIndex = clampedScene
+        vcvSceneIndex = clampedScene
+
+        let layerIndex = max(0, min(max(0, fieldLayerWeights.count - 1), clampedScene - 1))
+        vcvAuthorityFieldLayerIndex = layerIndex
+
+        if fieldLayerWeights.count > 0 {
+            selectedFieldLayerIndex = layerIndex
+        }
+
+        // RMU_V1_6D2_REMOVE_SCENE_BEHAVIOR_STOMP
+        // Scene authority controls selected scene and field layer only.
+        // Behavior authority belongs to Shift+E manually or /ch/18 when /ch/19 is gated high.
+    }
+
+    func rmuApplyVCVColorAuthority(_ mode: Int32) {
+        let clampedMode = max(Int32(0), min(Int32(4), mode))
+        vcvAuthorityColorMode = clampedMode
+
+        if vcvChannelValues.count > 6 {
+            vcvChannelValues[6] = Float(clampedMode)
+        }
+        if vcvRawChannelValues.count > 6 {
+            vcvRawChannelValues[6] = Float(clampedMode)
+        }
+
+        // v1.6B repair: colorModeName is get-only.
+        // VCV color authority is stored in vcvAuthorityColorMode and vcvChannelValues[6].
+        _ = clampedMode
+    }
+
+    func rmuApplyVCVFieldLayerWeights(_ weights: [Float]) {
+        if weights.isEmpty { return }
+        let count = min(weights.count, fieldLayerWeights.count)
+        if count <= 0 { return }
+        for i in 0..<count {
+            fieldLayerWeights[i] = weights[i]
+        }
+        selectedFieldLayerIndex = max(0, min(max(0, fieldLayerWeights.count - 1), vcvAuthorityFieldLayerIndex))
+    }
+        let mode = Int(vcvAuthorityColorMode)
+        switch mode {
+        case 0: return "classic"
+        case 1: return "thermal"
+        case 2: return "field"
+        case 3: return "species"
+        case 4: return "hsl"
+        default: return "mode \(mode)"
+        }
+    }
+
+    func rmuVCVCompactStatusLine() -> String {
+        // RMU_V1_6G_COMPACT_VCV_STATUS_LINE
+        return "\(rmuV16GVCVAuthoritySummary()) | color \(rmuVCVColorModeDisplayName()) | \(rmuBankStatusLine()) | \(rmuGravityVec4Summary())"
+    }
+
+    func rmuVCVDetailPageTitle() -> String {
+        switch max(0, min(4, vcvDetailPageIndex)) {
+        case 0: return "VCV PAGE 1: /ch/1-/ch/9"
+        case 1: return "VCV PAGE 2: /ch/10-/ch/17"
+        case 2: return "VCV PAGE 3: /ch/28-/ch/32"
+        case 3: return "VCV PAGE 4: Species P/S/M/T/C"
+        case 4: return "VCV PAGE 5: Gravity + Field Layers"
+        default: return "VCV PAGE"
+        }
+    }
 
     var selectedFieldLayerName: String {
         return fieldLayerNames[max(0, min(selectedFieldLayerIndex, fieldLayerNames.count - 1))]
@@ -1001,11 +1207,30 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
             constant int &behaviorEffectCode [[buffer(14)]],
             constant int &geospatialPaused [[buffer(15)]],
             constant float &anchorStrength [[buffer(16)]],
+            // RMU_V1_6C_VERTEX_SPECIES_COLOR_ARGS_BEGIN
+            constant uint *rmuV16CRenderSpeciesIDs [[buffer(17)]],
+            constant float *rmuV16CRenderColorBank [[buffer(18)]],
+            constant float &rmuV16CRenderSpeciesColorEnabled [[buffer(19)]],
+            // RMU_V1_6C_VERTEX_SPECIES_COLOR_ARGS_END
             uint vertexID [[vertex_id]]
         ) {
             Particle p = particles[vertexID];
             float3 fp = p.position;
             float3 baseGeospatialPosition = fp;
+
+            // RMU_V1_6C_VERTEX_SPECIES_COLOR_SAMPLE_BEGIN
+            uint rmuV16CSpeciesID = 0;
+            float3 rmuV16CSpeciesColor = float3(1.0, 1.0, 1.0);
+            if (rmuV16CRenderSpeciesColorEnabled > 0.5) {
+                rmuV16CSpeciesID = min(rmuV16CRenderSpeciesIDs[vertexID], 21u);
+                uint rmuV16CColorBase = rmuV16CSpeciesID * 3u;
+                rmuV16CSpeciesColor = float3(
+                    rmuV16CRenderColorBank[rmuV16CColorBase + 0u],
+                    rmuV16CRenderColorBank[rmuV16CColorBase + 1u],
+                    rmuV16CRenderColorBank[rmuV16CColorBase + 2u]
+                );
+            }
+            // RMU_V1_6C_VERTEX_SPECIES_COLOR_SAMPLE_END
 
             float baseRadius = max(length(fp), 0.0001);
             float3 dir = fp / baseRadius;
@@ -1112,9 +1337,11 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
             } else if (colorMode == 2) {
                 out.color = float4(0.25 + radial * 0.75, 0.8 - radial * 0.25, 1.0 - radial * 0.65, alpha);
             } else if (colorMode == 3) {
-                out.color = float4(0.92, 0.72 + depth * 0.25, 0.35 + radial * 0.45, alpha);
+                // RMU_V1_6C_VERTEX_SPECIES_COLOR_MODE
+                out.color = float4(rmuV16CSpeciesColor, alpha);
             } else if (colorMode == 4) {
-                out.color = float4(1.0, 0.35 + radial * 0.55, 0.10 + depth * 0.35, alpha);
+                // RMU_V1_6C_VERTEX_SPECIES_HSL_COLOR_MODE
+                out.color = float4(rmuV16CSpeciesColor, alpha);
             } else {
                 out.color = float4(0.72 + depth * 0.28, 0.82 + depth * 0.18, 1.0, alpha);
             }
@@ -1144,9 +1371,48 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
             constant float &particleCohesion [[buffer(13)]],
             constant int &behaviorEnabled [[buffer(14)]],
             constant int &respawnOnCapture [[buffer(15)]],
+            constant float &gravityWellPosition [[buffer(18)]],
+            constant float &gravityWellStrength [[buffer(19)]],
+            // RMU_V1_6B_SHADER_SPECIES_ARGS_BEGIN
+            constant uint *rmuV16BSpeciesIDs [[buffer(20)]],
+            constant uint *rmuV16BFamilyIDs [[buffer(21)]],
+            constant float *rmuV16BSpeciesWeights [[buffer(22)]],
+            constant float *rmuV16BProbabilityBank [[buffer(23)]],
+            constant float *rmuV16BSpeedBank [[buffer(24)]],
+            constant float *rmuV16BMassBank [[buffer(25)]],
+            constant float *rmuV16BTurbulenceBank [[buffer(26)]],
+            constant float *rmuV16BCohesionBank [[buffer(27)]],
+            constant float *rmuV16BColorBank [[buffer(28)]],
+            constant float &rmuV16BSpeciesControlEnabled [[buffer(30)]],
+            // RMU_V1_6B_SHADER_SPECIES_ARGS_END
             uint id [[thread_position_in_grid]]
         ) {
             if (id >= particleCount) { return; }
+
+            // RMU_V1_6B_SHADER_EFFECTIVE_VALUES_BEGIN
+            uint rmuV16BSpeciesID = 0;
+            uint rmuV16BFamilyID = 0;
+            float rmuV16BSpeciesWeight = 1.0;
+            float rmuV16BEffectiveProbability = 1.0;
+            float rmuV16BEffectiveSpeed = particleSpeed;
+            float rmuV16BEffectiveMass = particleMass;
+            float rmuV16BEffectiveTurbulence = particleTurbulence;
+            float rmuV16BEffectiveCohesion = particleCohesion;
+            float3 rmuV16BEffectiveColor = float3(1.0, 1.0, 1.0);
+            if (rmuV16BSpeciesControlEnabled > 0.5) {
+                rmuV16BSpeciesID = min(rmuV16BSpeciesIDs[id], 21u);
+                rmuV16BFamilyID = min(rmuV16BFamilyIDs[id], 6u);
+                rmuV16BSpeciesWeight = clamp(rmuV16BSpeciesWeights[id], 0.0, 1.0);
+                rmuV16BEffectiveProbability = clamp(rmuV16BProbabilityBank[rmuV16BSpeciesID], 0.0, 1.0);
+                rmuV16BEffectiveSpeed = mix(particleSpeed, rmuV16BSpeedBank[rmuV16BSpeciesID], rmuV16BSpeciesWeight);
+                rmuV16BEffectiveMass = max(0.05, mix(particleMass, rmuV16BMassBank[rmuV16BSpeciesID], rmuV16BSpeciesWeight));
+                rmuV16BEffectiveTurbulence = mix(particleTurbulence, rmuV16BTurbulenceBank[rmuV16BSpeciesID], rmuV16BSpeciesWeight);
+                rmuV16BEffectiveCohesion = mix(particleCohesion, rmuV16BCohesionBank[rmuV16BSpeciesID], rmuV16BSpeciesWeight);
+                uint rmuV16BColorBase = rmuV16BSpeciesID * 3u;
+                rmuV16BEffectiveColor = float3(rmuV16BColorBank[rmuV16BColorBase + 0u], rmuV16BColorBank[rmuV16BColorBase + 1u], rmuV16BColorBank[rmuV16BColorBase + 2u]);
+            }
+            float rmuV16BJitter = (fract(sin(float(id + rmuV16BSpeciesID * 131u) * 12.9898) * 43758.5453) - 0.5);
+            // RMU_V1_6B_SHADER_EFFECTIVE_VALUES_END
 
             float3 base = baseParticles[id].position;
             float3 pos = liveParticles[id].position;
@@ -1170,10 +1436,40 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
             float shellW = fieldWeightShell;
 
             float3 force = float3(0.0);
-            float speedScalar = clamp(particleSpeed, -3.0, 3.0);
-            float massScalar = max(particleMass, 0.20);
-            float turbulenceScalar = clamp(particleTurbulence, 0.0, 2.5);
+            float speedScalar = clamp(rmuV16BEffectiveSpeed, -3.0, 3.0);
+            float massScalar = max(rmuV16BEffectiveMass, 0.20);
+            float turbulenceScalar = clamp(rmuV16BEffectiveTurbulence, 0.0, 2.5);
             float cohesionScalar = clamp(particleCohesion, 0.0, 3.0);
+
+            // RMU_V1_4A_PARTICLE_SPECIES_ARCHITECTURE
+            // Deterministic species assignment for the first species-aware GPU pass.
+            // Full species_id buffers should replace id%22 in v1.4B.
+            uint speciesID = id % 22;
+            float speciesMassResponse = 1.0;
+            float speciesSpeedResponse = 1.0;
+            float speciesTurbulenceResponse = 1.0;
+            float speciesCohesionResponse = 1.0;
+            float speciesStrongCoupling = 0.15;
+            float speciesCharge = 0.0;
+            float speciesCurvatureCoupling = 0.55;
+
+            if (speciesID == 1) { speciesMassResponse = 0.65; speciesSpeedResponse = 1.35; speciesTurbulenceResponse = 1.15; speciesCohesionResponse = 0.10; speciesStrongCoupling = 0.0; speciesCharge = -1.0; speciesCurvatureCoupling = 0.20; }
+            else if (speciesID == 2) { speciesMassResponse = 0.65; speciesSpeedResponse = 1.35; speciesTurbulenceResponse = 1.15; speciesCohesionResponse = 0.10; speciesStrongCoupling = 0.0; speciesCharge = 1.0; speciesCurvatureCoupling = 0.20; }
+            else if (speciesID == 3 || speciesID == 13 || speciesID == 14) { speciesMassResponse = 0.25; speciesSpeedResponse = 1.55; speciesTurbulenceResponse = 0.35; speciesCohesionResponse = 0.02; speciesStrongCoupling = 0.0; speciesCharge = 0.0; speciesCurvatureCoupling = 0.05; }
+            else if (speciesID == 4) { speciesMassResponse = 0.75; speciesSpeedResponse = 0.90; speciesTurbulenceResponse = 0.65; speciesCohesionResponse = 1.35; speciesStrongCoupling = 1.0; speciesCharge = 0.6666667; speciesCurvatureCoupling = 0.35; }
+            else if (speciesID == 5) { speciesMassResponse = 0.80; speciesSpeedResponse = 0.85; speciesTurbulenceResponse = 0.60; speciesCohesionResponse = 1.40; speciesStrongCoupling = 1.0; speciesCharge = -0.3333333; speciesCurvatureCoupling = 0.38; }
+            else if (speciesID == 6) { speciesMassResponse = 0.05; speciesSpeedResponse = 1.80; speciesTurbulenceResponse = 1.25; speciesCohesionResponse = 0.00; speciesStrongCoupling = 0.0; speciesCharge = 0.0; speciesCurvatureCoupling = 0.12; }
+            else if (speciesID == 7) { speciesMassResponse = 0.10; speciesSpeedResponse = 1.25; speciesTurbulenceResponse = 1.40; speciesCohesionResponse = 1.60; speciesStrongCoupling = 1.25; speciesCharge = 0.0; speciesCurvatureCoupling = 0.20; }
+            else if (speciesID == 8) { speciesMassResponse = 1.40; speciesSpeedResponse = 0.45; speciesTurbulenceResponse = 0.35; speciesCohesionResponse = 0.65; speciesStrongCoupling = 0.0; speciesCharge = 0.0; speciesCurvatureCoupling = 0.65; }
+            else if (speciesID == 9) { speciesMassResponse = 1.20; speciesSpeedResponse = 0.55; speciesTurbulenceResponse = 0.45; speciesCohesionResponse = 1.25; speciesStrongCoupling = 1.15; speciesCharge = 1.0; speciesCurvatureCoupling = 0.75; }
+            else if (speciesID == 10) { speciesMassResponse = 1.25; speciesSpeedResponse = 0.50; speciesTurbulenceResponse = 0.40; speciesCohesionResponse = 1.30; speciesStrongCoupling = 1.15; speciesCharge = 0.0; speciesCurvatureCoupling = 0.78; }
+            else if (speciesID == 15 || speciesID == 16 || speciesID == 17 || speciesID == 18) { speciesMassResponse = 1.10; speciesSpeedResponse = 0.65; speciesTurbulenceResponse = 0.52; speciesCohesionResponse = 1.42; speciesStrongCoupling = 1.10; speciesCharge = (speciesID == 16 || speciesID == 17) ? 0.6666667 : -0.3333333; speciesCurvatureCoupling = 0.65; }
+            else if (speciesID == 19 || speciesID == 20) { speciesMassResponse = 1.20; speciesSpeedResponse = 0.78; speciesTurbulenceResponse = 0.58; speciesCohesionResponse = 0.25; speciesStrongCoupling = 0.0; speciesCharge = (speciesID == 19) ? 1.0 : 0.0; speciesCurvatureCoupling = 0.55; }
+            else if (speciesID == 21) { speciesMassResponse = 1.00; speciesSpeedResponse = 0.75; speciesTurbulenceResponse = 0.75; speciesCohesionResponse = 1.25; speciesStrongCoupling = 1.10; speciesCharge = 0.0; speciesCurvatureCoupling = 0.55; }
+
+            massScalar = max(0.05, massScalar * speciesMassResponse);
+            turbulenceScalar = clamp(turbulenceScalar * speciesTurbulenceResponse, 0.0, 3.5);
+            cohesionScalar = clamp(cohesionScalar * speciesCohesionResponse, 0.0, 4.8);
 
             // v1.3F6: no active anchor tether. Crab geography is the initial condition;
             // speed and mass now control free-roaming independent particles.
@@ -1196,6 +1492,42 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
                 sin(localPhase * 3.3 + pos.y * 4.7 + seed3 * 6.2831853)
             ) * (0.010 * turbulenceScalar * particleGain);
             force += -dir * (0.012 * cohesionScalar);
+
+            // RMU_V1_4A species-aware field/VCV coupling.
+            force += -dir * (0.006 * cohesionScalar * speciesStrongCoupling);
+            force += float3(-pos.y, pos.x, sin(localPhase + seed * 6.2831853)) * (0.0015 * speciesCharge * particleGain);
+            force += dir * (0.0020 * speciesCurvatureCoupling * radialW);
+
+            if (speciesID == 7) {
+                force += float3(
+                    sin(localPhase * 6.0 + seed * 12.0),
+                    cos(localPhase * 5.0 + seed2 * 10.0),
+                    sin(localPhase * 7.0 + seed3 * 8.0)
+                ) * (0.006 * cohesionScalar);
+            }
+
+            if (speciesID == 8) {
+                force *= 0.82;
+                force += -pos * (0.0015 * massScalar);
+            }
+
+            // RMU_V1_4B5_CONTROLLABLE_GRAVITY_WELL_FORCE_ACTIVE
+            // /ch/13 moves the gravity well along a dramatic X/Z diagonal.
+            // /ch/14 changes force enough to overpower the existing center well.
+            float wellPos = clamp(gravityWellPosition, -1.0, 1.0);
+            float wellStrength = clamp(gravityWellStrength, 0.0, 12.0);
+            float3 gravityWellCenter = float3(wellPos * 850.0, 0.0, -wellPos * 450.0);
+            float3 toWell = gravityWellCenter - pos;
+            float wellDistance = max(length(toWell), 8.0);
+            float3 wellDir = toWell / wellDistance;
+            float3 wellTangent = normalize(float3(-wellDir.z, 0.0, wellDir.x) + 0.0001);
+
+            force += wellDir * (0.024 * wellStrength * particleGain) / sqrt(1.0 + wellDistance * 0.002);
+            force += wellTangent * (0.016 * wellStrength * orbitalW) / sqrt(1.0 + wellDistance * 0.002);
+
+            // RMU_V1_4B controllable gravity well.
+            // /ch/13 moves the well dramatically along a diagonal X/Z path.
+            // /ch/14 changes the well strength enough to overpower existing behavior fields.
 
             // v1.3F8: first-class /ch/11 particle turbulence and /ch/12 particle cohesion.
             force += float3(
@@ -1363,6 +1695,111 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
         hud?.updateLayout()
     }
 
+
+    // RMU_V1_6F_PRE_ENCODE_VCV_AUTHORITY_BEGIN
+    func rmuV16FApplyLiveVCVDirectAuthorityFromDisk() {
+        let url = URL(fileURLWithPath: projectRoot)
+            .appendingPathComponent("output")
+            .appendingPathComponent("vcv_state.json")
+
+        guard let data = try? Data(contentsOf: url),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return
+        }
+
+        func rmuV16FNumberForChannel(_ path: String) -> Float? {
+            if let channels = json["channels"] as? [String: Any],
+               let number = channels[path] as? NSNumber {
+                return number.floatValue
+            }
+            if let nativeValues = json["native_channel_values"] as? [String: Any],
+               let number = nativeValues[path] as? NSNumber {
+                return number.floatValue
+            }
+            if let rawChannels = json["raw_channels"] as? [String: Any],
+               let rawList = rawChannels[path] as? [Any],
+               let first = rawList.first as? NSNumber {
+                return first.floatValue
+            }
+            return nil
+        }
+
+        func rmuV16FVoiceCountForChannel(_ path: String) -> Int {
+            if let counts = json["channel_voice_counts"] as? [String: Any],
+               let number = counts[path] as? NSNumber {
+                return number.intValue
+            }
+            if let nativeCounts = json["native_channel_voice_counts"] as? [String: Any],
+               let number = nativeCounts[path] as? NSNumber {
+                return number.intValue
+            }
+            return 0
+        }
+
+        // /ch/8 = scene / field layer authority.
+        // Important: older builds only changed selectedFieldLayerIndex, which affected HUD
+        // but did not strongly change the Metal field weights. v1.6F makes /ch/8 produce
+        // an actual shader-visible field recipe.
+        if rmuV16FVoiceCountForChannel("/ch/8") > 0,
+           let sceneValue = rmuV16FNumberForChannel("/ch/8") {
+            let directScene = max(1, min(6, Int(round(sceneValue))))
+            let layerIndex = max(0, min(fieldLayerWeights.count - 1, directScene - 1))
+
+            vcvSceneIndex = directScene
+            vcvAuthoritySceneIndex = directScene
+            vcvAuthorityFieldLayerIndex = layerIndex
+            selectedFieldLayerIndex = layerIndex
+            fieldLayersEnabled = true
+
+            // Scene-to-field recipe:
+            // 1 radial, 2 orbital, 3 vertical, 4 turbulence, 5 shell, 6 combined.
+            switch directScene {
+            case 1:
+                fieldLayerWeights = [2.25, 0.00, 0.00, 0.00, 0.00]
+                fieldLayerEnabled = [true, false, false, false, false]
+            case 2:
+                fieldLayerWeights = [0.00, 2.25, 0.00, 0.00, 0.00]
+                fieldLayerEnabled = [false, true, false, false, false]
+            case 3:
+                fieldLayerWeights = [0.00, 0.00, 2.25, 0.00, 0.00]
+                fieldLayerEnabled = [false, false, true, false, false]
+            case 4:
+                fieldLayerWeights = [0.00, 0.00, 0.00, 2.25, 0.00]
+                fieldLayerEnabled = [false, false, false, true, false]
+            case 5:
+                fieldLayerWeights = [0.00, 0.00, 0.00, 0.00, 2.25]
+                fieldLayerEnabled = [false, false, false, false, true]
+            case 6:
+                fieldLayerWeights = [1.00, 1.00, 0.50, 0.60, 0.85]
+                fieldLayerEnabled = [true, true, true, true, true]
+            default:
+                break
+            }
+        }
+
+        // /ch/18 = behavior code, /ch/19 = behavior authority gate.
+        // Apply this immediately before encode/render so controller or legacy state cannot stomp it.
+        let gateValue = rmuV16FNumberForChannel("/ch/19") ?? 0.0
+        let gateActive = rmuV16FVoiceCountForChannel("/ch/19") > 0 && gateValue >= 5.0
+
+        if gateActive,
+           rmuV16FVoiceCountForChannel("/ch/18") > 0,
+           let behaviorValue = rmuV16FNumberForChannel("/ch/18") {
+            let directBehavior = Int32(max(0, min(7, Int(round(behaviorValue)))))
+
+            behaviorEffectCode = directBehavior
+            geospatialBehaviorEnabled = true
+
+            rmuV16DBehaviorAuthorityActive = true
+            rmuV16DBehaviorAuthorityCode = directBehavior
+            rmuV16DBehaviorAuthorityGate = gateValue
+        } else {
+            rmuV16DBehaviorAuthorityActive = false
+            rmuV16DBehaviorAuthorityGate = gateValue
+        }
+    }
+    // RMU_V1_6F_PRE_ENCODE_VCV_AUTHORITY_END
+
     func encodeGeospatialParticleUpdate(commandBuffer: MTLCommandBuffer) {
         guard geospatialSimulationPaused == 0,
               let computePipelineState = computePipelineState,
@@ -1373,8 +1810,38 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
 
         var count = UInt32(max(0, lastUploadedParticleCount))
         if count == 0 { return }
+        // RMU_V1_6B_SPECIES_ENCODER_BINDINGS_BEGIN
+        rmuV16BLoadSpeciesIdentityBuffersForParticleCount(Int(count))
+        guard let rmuV16BSpeciesIDBufferLive = rmuV16BSpeciesIDBuffer,
+              let rmuV16BFamilyIDBufferLive = rmuV16BFamilyIDBuffer,
+              let rmuV16BSpeciesWeightBufferLive = rmuV16BSpeciesWeightBuffer else {
+            rmuV16BSpeciesIdentityStatus = "identity buffers unavailable during encode"
+            return
+        }
+        let rmuV16BProbabilityBank = rmuV16BPackBank32(particleSpeciesProbability, fallback: 1.0)
+        let rmuV16BSpeedBank = rmuV16BPackBank32(particleSpeciesSpeed, fallback: geospatialParticleSpeed)
+        let rmuV16BMassBank = rmuV16BPackBank32(particleSpeciesMass, fallback: geospatialParticleMass)
+        let rmuV16BTurbulenceBank = rmuV16BPackBank32(particleSpeciesTurbulence, fallback: geospatialParticleTurbulence)
+        let rmuV16BCohesionBank = rmuV16BPackBank32(particleSpeciesCohesion, fallback: geospatialParticleCohesion)
+        let rmuV16BColorBank = rmuV16BPackColorBank96(particleSpeciesColorRGB)
+        var rmuV16BEnabled = rmuV16BSpeciesControlEnabled
+        encoder.setBuffer(rmuV16BSpeciesIDBufferLive, offset: 0, index: 20)
+        encoder.setBuffer(rmuV16BFamilyIDBufferLive, offset: 0, index: 21)
+        encoder.setBuffer(rmuV16BSpeciesWeightBufferLive, offset: 0, index: 22)
+        rmuV16BProbabilityBank.withUnsafeBytes { encoder.setBytes($0.baseAddress!, length: $0.count, index: 23) }
+        rmuV16BSpeedBank.withUnsafeBytes { encoder.setBytes($0.baseAddress!, length: $0.count, index: 24) }
+        rmuV16BMassBank.withUnsafeBytes { encoder.setBytes($0.baseAddress!, length: $0.count, index: 25) }
+        rmuV16BTurbulenceBank.withUnsafeBytes { encoder.setBytes($0.baseAddress!, length: $0.count, index: 26) }
+        rmuV16BCohesionBank.withUnsafeBytes { encoder.setBytes($0.baseAddress!, length: $0.count, index: 27) }
+        rmuV16BColorBank.withUnsafeBytes { encoder.setBytes($0.baseAddress!, length: $0.count, index: 28) }
+        encoder.setBytes(&rmuV16BEnabled, length: MemoryLayout<Float>.stride, index: 30)
+        // RMU_V1_6B_SPECIES_ENCODER_BINDINGS_END
+
+        // RMU_V1_6F_COMPUTE_PRE_ENCODE_AUTHORITY_CALL
+        rmuV16FApplyLiveVCVDirectAuthorityFromDisk()
+
         var dt = geospatialSimDt
-        var behavior = behaviorEffectCode
+        var behavior = rmuV16DBehaviorAuthorityActive ? rmuV16DBehaviorAuthorityCode : behaviorEffectCode
         var particleSpeed = geospatialParticleSpeed
         var damping = geospatialDamping
         var weightsA = SIMD4<Float>(
@@ -1404,11 +1871,31 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
         encoder.setBytes(&particleTurbulence, length: MemoryLayout<Float>.stride, index: 12)
         var particleCohesion = geospatialParticleCohesion
         encoder.setBytes(&particleCohesion, length: MemoryLayout<Float>.stride, index: 13)
-        var behaviorEnabledValue: Int32 = geospatialBehaviorEnabled ? 1 : 0
+        // RMU_V1_6F_COMPUTE_BEHAVIOR_ENABLED_AUTHORITY
+        var behaviorEnabledValue: Int32 = (rmuV16DBehaviorAuthorityActive || geospatialBehaviorEnabled) ? 1 : 0
         encoder.setBytes(&behaviorEnabledValue, length: MemoryLayout<Int32>.stride, index: 14)
         var respawnOnCaptureValue: Int32 = geospatialRespawnOnCapture ? 1 : 0
         encoder.setBytes(&respawnOnCaptureValue, length: MemoryLayout<Int32>.stride, index: 15)
-        var behaviorEnabledForKernel = geospatialBehaviorEnabled ? Int32(1) : Int32(0)
+        // RMU_V1_4B5_GRAVITY_WELL_ENCODER_ACTIVE_RAW_CHANNELS
+        // /ch/13: raw -5V..+5V -> gravity well position -1..+1
+        // /ch/14: raw -5V..+5V -> gravity well strength 0..12
+        // RMU_V1_4B11_GRAVITY_ENCODER_USES_CHANNEL_VALUES
+        var gravityWellPositionValue: Float = 0.0
+        // RMU_V1_5F_GRAVITY_VEC4_AUTHORITY
+        if gravityWellPositionVec4.count >= 1 {
+            gravityWellPositionValue = max(-1.0, min(gravityWellPositionVec4[0], 1.0))
+        } else if vcvChannelValues.count >= 14 {
+            gravityWellPositionValue = max(-1.0, min(vcvChannelValues[13], 1.0))
+        }
+        var gravityWellStrengthValue: Float = 6.0
+        // RMU_V1_5F_GRAVITY_STRENGTH_CH15_AUTHORITY
+        if vcvChannelValues.count >= 15 {
+            gravityWellStrengthValue = max(0.0, min(vcvChannelValues[14], 12.0))
+        }
+        encoder.setBytes(&gravityWellPositionValue, length: MemoryLayout<Float>.stride, index: 18)
+        encoder.setBytes(&gravityWellStrengthValue, length: MemoryLayout<Float>.stride, index: 19)
+        // RMU_V1_6F_KERNEL_BEHAVIOR_ENABLED_AUTHORITY
+        var behaviorEnabledForKernel = (rmuV16DBehaviorAuthorityActive || geospatialBehaviorEnabled) ? Int32(1) : Int32(0)
         encoder.setBytes(&behaviorEnabledForKernel, length: MemoryLayout<Int32>.stride, index: 14)
         var respawnOnCaptureForKernel = geospatialRespawnOnCapture ? Int32(1) : Int32(0)
         encoder.setBytes(&respawnOnCaptureForKernel, length: MemoryLayout<Int32>.stride, index: 15)
@@ -1524,6 +2011,9 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
         var cm = colorMode
         var a = alpha
         var om = overlayMode
+        // RMU_V1_6F_RENDER_PRE_DRAW_AUTHORITY_CALL
+        rmuV16FApplyLiveVCVDirectAuthorityFromDisk()
+
         var fle = fieldLayersEnabled ? Int32(1) : Int32(0)
         var weightsA = SIMD4<Float>(
             fieldLayerWeights[0],
@@ -1542,11 +2032,32 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
         var phase = fieldPhase
         // v1.3F6: true motion is handled by the Metal compute kernel.
         // Keep vertex shader behavior disabled for main particles to avoid whole-cloud deformation.
-        var behaviorCodeForShader = Int32(0)
+        // RMU_V1_6F_RENDER_BEHAVIOR_CODE_AUTHORITY
+        var behaviorCodeForShader = rmuV16DBehaviorAuthorityActive ? rmuV16DBehaviorAuthorityCode : Int32(0)
         var geospatialPausedForShader = geospatialSimulationPaused
         var anchorStrengthForShader = geospatialAnchorStrength
 
         encoder.setVertexBuffer(buffer, offset: 0, index: 0)
+
+        // RMU_V1_6C_RENDER_SPECIES_COLOR_BINDINGS_BEGIN
+        // v1.6C1 repair: use count here because drawCount is declared later in this render function.
+        rmuV16BLoadSpeciesIdentityBuffersForParticleCount(Int(count))
+        if let rmuV16CRenderSpeciesIDBuffer = rmuV16BSpeciesIDBuffer {
+            encoder.setVertexBuffer(rmuV16CRenderSpeciesIDBuffer, offset: 0, index: 17)
+        } else {
+            let fallbackIDs = Array(repeating: UInt32(0), count: max(1, Int(count)))
+            if let fallbackIDBuffer = device.makeBuffer(bytes: fallbackIDs, length: fallbackIDs.count * MemoryLayout<UInt32>.stride, options: [.storageModeShared]) {
+                encoder.setVertexBuffer(fallbackIDBuffer, offset: 0, index: 17)
+            }
+        }
+
+        let rmuV16CRenderColorBank = rmuV16BPackColorBank96(particleSpeciesColorRGB)
+        var rmuV16CRenderSpeciesColorEnabled: Float = 1.0
+        rmuV16CRenderColorBank.withUnsafeBytes {
+            encoder.setVertexBytes($0.baseAddress!, length: $0.count, index: 18)
+        }
+        encoder.setVertexBytes(&rmuV16CRenderSpeciesColorEnabled, length: MemoryLayout<Float>.stride, index: 19)
+        // RMU_V1_6C_RENDER_SPECIES_COLOR_BINDINGS_END
         encoder.setVertexBytes(&radius, length: MemoryLayout<Float>.stride, index: 1)
         encoder.setVertexBytes(&mutablePointSize, length: MemoryLayout<Float>.stride, index: 2)
         encoder.setVertexBytes(&rot, length: MemoryLayout<Float>.stride, index: 3)
@@ -1567,6 +2078,83 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
         encoder.drawPrimitives(type: .point, vertexStart: 0, vertexCount: drawCount)
     }
 
+    // RMU_V1_6B_SPECIES_IDENTITY_LOADER_BEGIN
+    func rmuV16BReadUInt16LE(_ bytes: [UInt8], _ offset: Int) -> UInt16 {
+        if offset + 1 >= bytes.count { return 0 }
+        return UInt16(bytes[offset]) | (UInt16(bytes[offset + 1]) << 8)
+    }
+
+    func rmuV16BReadFloat32LE(_ bytes: [UInt8], _ offset: Int) -> Float {
+        if offset + 3 >= bytes.count { return 0.0 }
+        let bits = UInt32(bytes[offset]) | (UInt32(bytes[offset + 1]) << 8) | (UInt32(bytes[offset + 2]) << 16) | (UInt32(bytes[offset + 3]) << 24)
+        return Float(bitPattern: bits)
+    }
+
+    func rmuV16BPackBank32(_ source: [Float], fallback: Float) -> [Float] {
+        var out = Array(repeating: fallback, count: 32)
+        if source.isEmpty { return out }
+        for i in 0..<min(32, source.count) { out[i] = source[i] }
+        return out
+    }
+
+    func rmuV16BPackColorBank96(_ source: [Float]) -> [Float] {
+        var out = Array(repeating: Float(1.0), count: 96)
+        if source.isEmpty { return out }
+        for i in 0..<min(96, source.count) { out[i] = source[i] }
+        return out
+    }
+
+    func rmuV16BLoadSpeciesIdentityBuffersForParticleCount(_ particleCount: Int) {
+        if particleCount <= 0 {
+            rmuV16BSpeciesIdentityStatus = "no particles"
+            return
+        }
+        if rmuV16BSpeciesIdentityLoaded && rmuV16BSpeciesIdentityParticleCount == particleCount && rmuV16BSpeciesIDBuffer != nil && rmuV16BFamilyIDBuffer != nil && rmuV16BSpeciesWeightBuffer != nil { return }
+        let binURL = URL(fileURLWithPath: projectRoot).appendingPathComponent("data").appendingPathComponent("processed").appendingPathComponent("species_identity_v1_6A.bin")
+        guard let data = try? Data(contentsOf: binURL) else {
+            rmuV16BSpeciesIdentityLoaded = false
+            rmuV16BSpeciesIdentityStatus = "missing species_identity_v1_6A.bin"
+            rmuV16BSpeciesIdentityLastError = binURL.path
+            return
+        }
+        let bytes = [UInt8](data)
+        let recordSize = 8
+        let records = bytes.count / recordSize
+        if records <= 0 { rmuV16BSpeciesIdentityLoaded = false; rmuV16BSpeciesIdentityStatus = "empty species identity"; return }
+        var speciesIDs = Array(repeating: UInt32(0), count: particleCount)
+        var familyIDs = Array(repeating: UInt32(0), count: particleCount)
+        var weights = Array(repeating: Float(1.0), count: particleCount)
+        let copyCount = min(records, particleCount)
+        for i in 0..<copyCount {
+            let offset = i * recordSize
+            speciesIDs[i] = UInt32(min(rmuV16BReadUInt16LE(bytes, offset), UInt16(21)))
+            familyIDs[i] = UInt32(min(rmuV16BReadUInt16LE(bytes, offset + 2), UInt16(6)))
+            weights[i] = max(0.0, min(rmuV16BReadFloat32LE(bytes, offset + 4), 1.0))
+        }
+        if records < particleCount {
+            for i in records..<particleCount {
+                let j = i % max(records, 1)
+                speciesIDs[i] = speciesIDs[j]
+                familyIDs[i] = familyIDs[j]
+                weights[i] = weights[j]
+            }
+        }
+        rmuV16BSpeciesIDCPU = speciesIDs
+        rmuV16BFamilyIDCPU = familyIDs
+        rmuV16BSpeciesWeightCPU = weights
+        let idLength = max(1, particleCount) * MemoryLayout<UInt32>.stride
+        let weightLength = max(1, particleCount) * MemoryLayout<Float>.stride
+        rmuV16BSpeciesIDBuffer = speciesIDs.withUnsafeBytes { device.makeBuffer(bytes: $0.baseAddress!, length: idLength, options: [.storageModeShared]) }
+        rmuV16BFamilyIDBuffer = familyIDs.withUnsafeBytes { device.makeBuffer(bytes: $0.baseAddress!, length: idLength, options: [.storageModeShared]) }
+        rmuV16BSpeciesWeightBuffer = weights.withUnsafeBytes { device.makeBuffer(bytes: $0.baseAddress!, length: weightLength, options: [.storageModeShared]) }
+        rmuV16BSpeciesIdentityLoaded = rmuV16BSpeciesIDBuffer != nil && rmuV16BFamilyIDBuffer != nil && rmuV16BSpeciesWeightBuffer != nil
+        rmuV16BSpeciesIdentityRecordCount = records
+        rmuV16BSpeciesIdentityParticleCount = particleCount
+        rmuV16BSpeciesIdentityStatus = records == particleCount ? "loaded \\(records)/\\(particleCount)" : "loaded \\(records)/\\(particleCount) count mismatch handled"
+        print("RMU v1.6B species identity: \\(rmuV16BSpeciesIdentityStatus)")
+    }
+    // RMU_V1_6B_SPECIES_IDENTITY_LOADER_END
+
     func updateParticleBufferIfNeeded() {
         let particles = frameLoader.particles
         guard !particles.isEmpty else { return }
@@ -1577,7 +2165,11 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
             velocityParticleBuffer != nil &&
             lastUploadedParticleCount == particles.count &&
             lastUploadedModificationDate == currentMod
-        if sameUpload { return }
+        if sameUpload {
+            // RMU_V1_6B_SAME_UPLOAD_IDENTITY_CALL
+            rmuV16BLoadSpeciesIdentityBuffersForParticleCount(particles.count)
+            return
+        }
 
         let byteCount = particles.count * MemoryLayout<Particle>.stride
         guard let baseBuffer = device.makeBuffer(bytes: particles, length: byteCount, options: [.storageModeShared]),
@@ -1589,6 +2181,8 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
         baseParticleBuffer = baseBuffer
         liveParticleBuffer = liveBuffer
         velocityParticleBuffer = velocityBuffer
+        // RMU_V1_6B_CREATE_IDENTITY_BUFFERS_AFTER_GPU_BUFFERS
+        rmuV16BLoadSpeciesIdentityBuffersForParticleCount(particles.count)
         particleBuffer = liveBuffer
         lastUploadedParticleCount = particles.count
         lastUploadedModificationDate = currentMod
@@ -1620,8 +2214,60 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
         hud?.updateText()
     }
 
+
+    // RMU_V1_6G_HUD_AUTHORITY_HELPERS_BEGIN
+    func rmuV16GEffectiveBehaviorCode() -> Int32 {
+        return rmuV16DBehaviorAuthorityActive ? rmuV16DBehaviorAuthorityCode : behaviorEffectCode
+    }
+
+    func rmuV16GBehaviorAuthorityLabel() -> String {
+        return rmuV16DBehaviorAuthorityActive ? "VCV" : "MANUAL"
+    }
+
+    func rmuV16GBehaviorHUDSummary() -> String {
+        let code = rmuV16GEffectiveBehaviorCode()
+        let enabled = (rmuV16DBehaviorAuthorityActive || geospatialBehaviorEnabled) && code != 0
+        let gate = String(format: "%.2fV", rmuV16DBehaviorAuthorityGate)
+        return "\(enabled ? "ON" : "OFF") code \(code) src \(rmuV16GBehaviorAuthorityLabel()) gate \(gate)"
+    }
+
+    func rmuV16GFieldRecipeSummary() -> String {
+        var parts: [String] = []
+        for i in 0..<min(fieldLayerNames.count, fieldLayerWeights.count) {
+            let enabled = i < fieldLayerEnabled.count ? fieldLayerEnabled[i] : false
+            let prefix = enabled ? "*" : "-"
+            parts.append("\(prefix)\(fieldLayerNames[i].prefix(3)):\(String(format: "%.2f", fieldLayerWeights[i]))")
+        }
+        return parts.joined(separator: " ")
+    }
+
+    func rmuV16GFieldAuthoritySummary() -> String {
+        let layerName = selectedFieldLayerName.uppercased()
+        return "scene \(vcvSceneIndex) layer \(selectedFieldLayerIndex + 1) \(layerName) | \(rmuV16GFieldRecipeSummary())"
+    }
+
+    func rmuV16GSpeciesIdentitySummary() -> String {
+        let sid = rmuV16BSpeciesIDBuffer != nil ? "SID" : "sid?"
+        let fam = rmuV16BFamilyIDBuffer != nil ? "FID" : "fid?"
+        let weight = rmuV16BSpeciesWeightBuffer != nil ? "W" : "w?"
+        return "\(rmuV16BSpeciesIdentityStatus) | \(sid)/\(fam)/\(weight)"
+    }
+
+    func rmuV16GColorAuthoritySummary() -> String {
+        return "mode \(Int(vcvAuthorityColorMode)) \(rmuVCVColorModeDisplayName()) | draw vertex species RGB | /ch/7"
+    }
+
+    func rmuV16GVCVAuthoritySummary() -> String {
+        return "\(vcvDisplayStatus()) | bridge v1.6D1 | /ch8 scene \(vcvSceneIndex) | /ch18 beh \(rmuV16GEffectiveBehaviorCode()) | /ch19 \(String(format: "%.2fV", rmuV16DBehaviorAuthorityGate)) \(rmuV16DBehaviorAuthorityActive ? "GATED" : "MANUAL")"
+    }
+
+    func rmuV16GSystemHUDSummary() -> String {
+        return "v1.6G HUD | species v1.6B | color v1.6C | bridge v1.6D1 | apply v1.6F"
+    }
+    // RMU_V1_6G_HUD_AUTHORITY_HELPERS_END
+
     func printDiagnostics() {
-        print("Metal renderer | fps=\(String(format: "%.1f", currentFPS)) | points=\(frameLoader.latestPointCount) | simFrame=\(frameLoader.latestFrameIndex) | runtime=\(geospatialSimulationPaused == 0 ? "geospatial_live_running" : "geospatial_static_paused") | behaviorCode=\(behaviorEffectCode) | color=\(colorModeName) | trails=\(trailsEnabled) len=\(trailLength) | presentation=\(presentationModeEnabled) | FIELD_SYSTEM=\(fieldLayersEnabled ? "ON" : "OFF") | SELECTED=\(selectedFieldLayerName) | WEIGHT=\(String(format: "%.2f", selectedFieldLayerWeight)) | ENABLED=\(fieldLayerEnabled[selectedFieldLayerIndex]) | VCV=\(vcvDisplayStatus()) | SPEED=\(String(format: "%.2f", geospatialParticleSpeed)) | MASS=\(String(format: "%.2f", geospatialParticleMass)) | TURB=\(String(format: "%.2f", geospatialParticleTurbulence)) | COH=\(String(format: "%.2f", geospatialParticleCohesion)) | CAP=\(geospatialDisplayParticleLimit) | SAFE=\(vcvSafeModeEnabled) | \(vcvChannelCompactSummary())")
+        print("Metal renderer | fps=\(String(format: "%.1f", currentFPS)) | points=\(frameLoader.latestPointCount) | simFrame=\(frameLoader.latestFrameIndex) | runtime=\(geospatialSimulationPaused == 0 ? "geospatial_live_running" : "geospatial_static_paused") | behaviorCode=\(behaviorEffectCode) | color=\(colorModeName) | trails=\(trailsEnabled) len=\(trailLength) | presentation=\(presentationModeEnabled) | FIELD_SYSTEM=\(fieldLayersEnabled ? "ON" : "OFF") | SELECTED=\(selectedFieldLayerName) | WEIGHT=\(String(format: "%.2f", selectedFieldLayerWeight)) | ENABLED=\(fieldLayerEnabled[selectedFieldLayerIndex]) | VCV=\(vcvDisplayStatus()) | SPEED=\(String(format: "%.2f", geospatialParticleSpeed)) | MASS=\(String(format: "%.2f", geospatialParticleMass)) | TURB=\(String(format: "%.2f", geospatialParticleTurbulence)) | COH=\(String(format: "%.2f", geospatialParticleCohesion)) | WELL=\(String(format: "%.2f", geospatialGravityWellPosition))/\(String(format: "%.2f", geospatialGravityWellStrength)) | CAP=\(geospatialDisplayParticleLimit) | SAFE=\(vcvSafeModeEnabled) | SPECIES_COLOR=VERTEX | BEH18/19=VCV_GATE_DIRECT | VCV_APPLY=v1.6F_PRE_ENCODE HUD=v1.6G | \(vcvChannelCompactSummary())")
     }
 
     func increasePointSize() { pointSize = min(pointSize + 0.5, 12.0); hud?.updateText() }
@@ -1691,16 +2337,38 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
         return current + (target - current) * a
     }
 
+
+
+
+
     func vcvDisplayStatus() -> String {
-        if !vcvFieldControlEnabled {
-            if vcvStatus.hasPrefix("external") { return "ACTIVE / field OFF" }
-            if vcvStatus.hasPrefix("stale") { return "STALE / field OFF" }
-            return "OFF / not detected"
+        // RMU_V1_5A14_STABLE_VCV_DISPLAY_STATUS
+        // Restore documented VCV status vocabulary: ACTIVE, STALE, OFF.
+        // "VCV OFF - internal fallback" was introduced during v1.5A troubleshooting and is not part of the stable HUD contract.
+        let lower = vcvStatus.lowercased()
+
+        if lower.hasPrefix("external") || lower.contains("active") {
+            return "VCV ACTIVE"
         }
-        if vcvStatus.hasPrefix("external") { return "ACTIVE" }
-        if vcvStatus.hasPrefix("stale") { return "STALE - internal fallback" }
-        return "OFF - internal fallback"
+
+        if lower.hasPrefix("stale") {
+            return "VCV STALE - internal fallback"
+        }
+
+        if lower.contains("not detected") {
+            return "VCV OFF - internal fallback"
+        }
+
+        if !vcvFieldControlEnabled {
+            return "VCV OFF - internal fallback"
+        }
+
+        return vcvStatus
     }
+
+
+
+
 
     func vcvChannelLabel(_ index: Int) -> String {
         guard index >= 0 && index < vcvChannelLabels.count else { return "unknown" }
@@ -1713,16 +2381,13 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
     }
 
     func vcvChannelCompactSummary() -> String {
-        var parts: [String] = []
-        for i in 0..<min(vcvChannelValues.count, vcvChannelLabels.count) {
-            let offMark = vcvChannelEnabled[i] ? "" : "x"
-            let label = vcvChannelLabels[i]
-            let raw = vcvRawChannelValues[i]
-            let val = vcvChannelValues[i]
-            parts.append("/ch/\(i + 1)\(offMark) \(label)=\(String(format: "%.2f", val)) raw=\(String(format: "%.2f", raw))")
+        // RMU_V1_5E_COMPACT_CHANNEL_SUMMARY
+        if vcvDetailPanelVisible {
+            return "\(rmuVCVCompactStatusLine()) | \(rmuVCVDetailPageTitle())"
         }
-        return "OSC: " + parts.joined(separator: " | ")
+        return rmuVCVCompactStatusLine()
     }
+
 
     func vcvChannelEnableSummary() -> String {
         var parts: [String] = []
@@ -1775,6 +2440,7 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
         hud?.updateText()
     }
 
+    // RMU_V1_5A7_NOTE: vcvFieldControlEnabled now defaults ON; SHIFT+V still toggles it.
     func loadVCVStateIfNeeded() {
         let now = Date().timeIntervalSince1970
         if now - vcvLastReadTime < 0.20 { return }
@@ -1791,16 +2457,53 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
             return
         }
 
-        let timestamp = (json["timestamp_unix"] as? NSNumber)?.doubleValue ?? 0.0
+
+        // RMU_V1_5A9_SWIFT_VCV_FILE_FRESHNESS_DETECTION
+        // The bridge writes vcv_state.json every heartbeat. Treat a freshly modified
+        // state file as live even if older JSON compatibility keys disagree.
+        var fileModificationUnix: Double = 0.0
+        if let attrs = try? FileManager.default.attributesOfItem(atPath: url.path),
+           let modDate = attrs[.modificationDate] as? Date {
+            fileModificationUnix = modDate.timeIntervalSince1970
+        }
+
+        let timestamp =
+            (json["timestamp_unix"] as? NSNumber)?.doubleValue ??
+            (json["last_update"] as? NSNumber)?.doubleValue ??
+            (json["timestamp"] as? NSNumber)?.doubleValue ??
+            (json["updated_at"] as? NSNumber)?.doubleValue ??
+            fileModificationUnix
+
         vcvLastUpdateUnix = timestamp
-        let age = now - timestamp
-        let externalDetected = ((json["external_detected"] as? Bool) ?? false) && age < 3.0
+
+        let jsonAge = now - timestamp
+        let fileAge = fileModificationUnix > 0.0 ? now - fileModificationUnix : 9999.0
+
+        let jsonActive =
+            (json["external_detected"] as? Bool) ??
+            (json["active"] as? Bool) ??
+            (json["fresh"] as? Bool) ??
+            (json["online"] as? Bool) ??
+            (json["connected"] as? Bool) ??
+            false
+
+        let jsonStatus =
+            ((json["status"] as? String) ??
+             (json["vcv_status"] as? String) ??
+             "").lowercased()
+
+        let externalDetected =
+            fileAge < 3.0 ||
+            (timestamp > 0.0 && jsonAge < 3.0 && (jsonActive || jsonStatus.contains("active")))
 
         if externalDetected {
-            vcvStatus = String(format: "external %.1fs", age)
+            vcvFieldControlEnabled = true
+            let shownAge = min(jsonAge, fileAge)
+            vcvStatus = String(format: "external %.1fs", max(0.0, shownAge))
             probabilitySource = (json["probability_source"] as? String) ?? "vcv"
         } else {
-            vcvStatus = String(format: "stale %.1fs", age)
+            let shownAge = min(jsonAge, fileAge)
+            vcvStatus = String(format: "stale %.1fs", max(0.0, shownAge))
             probabilitySource = "internal"
         }
 
@@ -1808,7 +2511,291 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
             vcvLastValues = summary
         }
 
-        if let probabilityNumber = json["probability_value"] as? NSNumber {
+        
+        // RMU_V1_5C_POLY_SPECIES_CONTROL_PARSE
+        func rmuFloatArray(_ key: String, _ maxCount: Int) -> [Float] {
+            guard let arr = json[key] as? [Any] else { return [] }
+            var out: [Float] = []
+            for item in arr.prefix(maxCount) {
+                if let n = item as? NSNumber { out.append(n.floatValue) }
+                else if let d = item as? Double { out.append(Float(d)) }
+                else if let f = item as? Float { out.append(f) }
+                else if let i = item as? Int { out.append(Float(i)) }
+            }
+            return out
+        }
+
+        func rmuIntArray(_ key: String, _ maxCount: Int) -> [Int32] {
+            guard let arr = json[key] as? [Any] else { return [] }
+            var out: [Int32] = []
+            for item in arr.prefix(maxCount) {
+                if let n = item as? NSNumber { out.append(n.int32Value) }
+                else if let i = item as? Int { out.append(Int32(i)) }
+                else if let d = item as? Double { out.append(Int32(d)) }
+            }
+            return out
+        }
+
+        func rmuCopyFloats(_ values: [Float], _ target: inout [Float], _ count: Int) {
+            if values.isEmpty { return }
+            for i in 0..<min(count, min(values.count, target.count)) { target[i] = values[i] }
+        }
+
+        func rmuCopyInts(_ values: [Int32], _ target: inout [Int32], _ count: Int) {
+            if values.isEmpty { return }
+            for i in 0..<min(count, min(values.count, target.count)) { target[i] = values[i] }
+        }
+
+        let probabilityBank = rmuFloatArray("particle_species_probability", 22)
+        rmuCopyFloats(probabilityBank, &particleSpeciesProbability, 22)
+        if let n = json["particle_species_probability_voice_count"] as? NSNumber { particleSpeciesProbabilityVoiceCount = n.intValue }
+        if let n = json["particle_species_probability_voice_count_A"] as? NSNumber { particleSpeciesProbabilityVoiceCountA = n.intValue }
+        if let n = json["particle_species_probability_voice_count_B"] as? NSNumber { particleSpeciesProbabilityVoiceCountB = n.intValue }
+
+        let colorModeBank = rmuIntArray("particle_species_color_mode", 22)
+        rmuCopyInts(colorModeBank, &particleSpeciesColorMode, 22)
+        if let n = json["particle_species_color_mode_voice_count"] as? NSNumber { particleSpeciesColorModeVoiceCount = n.intValue }
+        if let n = json["particle_species_color_mode_voice_count_A"] as? NSNumber { particleSpeciesColorModeVoiceCountA = n.intValue }
+        if let n = json["particle_species_color_mode_voice_count_B"] as? NSNumber { particleSpeciesColorModeVoiceCountB = n.intValue }
+
+
+
+        // RMU_V1_5G_FIELD_LAYER_WEIGHTS_PARSE
+        let vcvFieldWeights = rmuFloatArray("field_layer_weights", 8)
+        if !vcvFieldWeights.isEmpty {
+            let count = min(vcvFieldWeights.count, fieldLayerWeights.count)
+            if count > 0 {
+                for i in 0..<count {
+                    fieldLayerWeights[i] = vcvFieldWeights[i]
+                }
+            }
+        }
+        // RMU_V1_5G_COLOR_AUTHORITY_PARSE
+        if let colorNumber = json["color_mode"] as? NSNumber {
+            let c = max(Int32(0), min(Int32(4), colorNumber.int32Value))
+            if vcvChannelValues.count > 6 {
+                vcvChannelValues[6] = Float(c)
+            }
+            if vcvRawChannelValues.count > 6 {
+                vcvRawChannelValues[6] = Float(c)
+            }
+        } else if particleSpeciesColorMode.count > 0 {
+            let c = max(Int32(0), min(Int32(4), particleSpeciesColorMode[0]))
+            if vcvChannelValues.count > 6 {
+                vcvChannelValues[6] = Float(c)
+            }
+            if vcvRawChannelValues.count > 6 {
+                vcvRawChannelValues[6] = Float(c)
+            }
+        }
+        let speedBank = rmuFloatArray("particle_species_speed", 22)
+        rmuCopyFloats(speedBank, &particleSpeciesSpeed, 22)
+        if let n = json["particle_species_speed_voice_count"] as? NSNumber { particleSpeciesSpeedVoiceCount = n.intValue }
+        if let n = json["particle_species_speed_voice_count_A"] as? NSNumber { particleSpeciesSpeedVoiceCountA = n.intValue }
+        if let n = json["particle_species_speed_voice_count_B"] as? NSNumber { particleSpeciesSpeedVoiceCountB = n.intValue }
+
+        let massBank = rmuFloatArray("particle_species_mass", 22)
+        rmuCopyFloats(massBank, &particleSpeciesMass, 22)
+        if let n = json["particle_species_mass_voice_count"] as? NSNumber { particleSpeciesMassVoiceCount = n.intValue }
+        if let n = json["particle_species_mass_voice_count_A"] as? NSNumber { particleSpeciesMassVoiceCountA = n.intValue }
+        if let n = json["particle_species_mass_voice_count_B"] as? NSNumber { particleSpeciesMassVoiceCountB = n.intValue }
+        if !particleSpeciesMass.isEmpty {
+            let total = particleSpeciesMass.reduce(Float(0.0), +)
+            geospatialParticleMass = total / Float(max(1, particleSpeciesMass.count))
+        }
+
+        let turbulenceBank = rmuFloatArray("particle_species_turbulence", 22)
+        rmuCopyFloats(turbulenceBank, &particleSpeciesTurbulence, 22)
+        if let n = json["particle_species_turbulence_voice_count"] as? NSNumber { particleSpeciesTurbulenceVoiceCount = n.intValue }
+        if let n = json["particle_species_turbulence_voice_count_A"] as? NSNumber { particleSpeciesTurbulenceVoiceCountA = n.intValue }
+        if let n = json["particle_species_turbulence_voice_count_B"] as? NSNumber { particleSpeciesTurbulenceVoiceCountB = n.intValue }
+
+        let cohesionBank = rmuFloatArray("particle_species_cohesion", 22)
+        rmuCopyFloats(cohesionBank, &particleSpeciesCohesion, 22)
+        if let n = json["particle_species_cohesion_voice_count"] as? NSNumber { particleSpeciesCohesionVoiceCount = n.intValue }
+        if let n = json["particle_species_cohesion_voice_count_A"] as? NSNumber { particleSpeciesCohesionVoiceCountA = n.intValue }
+        if let n = json["particle_species_cohesion_voice_count_B"] as? NSNumber { particleSpeciesCohesionVoiceCountB = n.intValue }
+
+        if let hslNested = json["particle_species_color_hsl"] as? [[Any]] {
+            var flat: [Float] = []
+            for triple in hslNested.prefix(22) {
+                for item in triple.prefix(3) {
+                    if let n = item as? NSNumber { flat.append(n.floatValue) }
+                    else if let d = item as? Double { flat.append(Float(d)) }
+                }
+            }
+            rmuCopyFloats(flat, &particleSpeciesColorHSL, 66)
+        }
+
+        if let rgbNested = json["particle_species_color_rgb"] as? [[Any]] {
+            var flat: [Float] = []
+            for triple in rgbNested.prefix(22) {
+                for item in triple.prefix(3) {
+                    if let n = item as? NSNumber { flat.append(n.floatValue) }
+                    else if let d = item as? Double { flat.append(Float(d)) }
+                }
+            }
+            rmuCopyFloats(flat, &particleSpeciesColorRGB, 66)
+        }
+        if let n = json["particle_species_color_hsl_voice_count"] as? NSNumber { particleSpeciesColorVoiceCount = n.intValue }
+        if let n = json["particle_species_color_hsl_voice_count_A"] as? NSNumber { particleSpeciesColorVoiceCountA = n.intValue }
+        if let n = json["particle_species_color_hsl_voice_count_B"] as? NSNumber { particleSpeciesColorVoiceCountB = n.intValue }
+
+        let gravityVec4 = rmuFloatArray("gravity_well_position_vec4", 4)
+        rmuCopyFloats(gravityVec4, &gravityWellPositionVec4, 4)
+
+        // RMU_V1_5G_SCENE_FIELD_AUTHORITY_PARSE
+        // RMU_V1_6C_OPTIONAL_BEHAVIOR_CHANNEL_AUTHORITY_BEGIN
+        // RMU_V1_6D_DIRECT_CHANNEL_BEHAVIOR_AUTHORITY
+        //
+        // /ch/8 remains scene/field only.
+        // Shift+E/manual behavior remains authority by default.
+        //
+        // /ch/19 is a deliberate VCV behavior authority gate.
+        // /ch/18 only drives behavior code while /ch/19 is >= 5V.
+        //
+        // v1.6D reads /ch/18 and /ch/19 directly from the JSON channel dictionaries instead
+        // of relying on vcvChannelValues[17]/[18]. The log proved those channels are live in
+        // vcv_state.json but can be missed by older fixed-width Swift arrays.
+        func rmuV16DNumberForChannel(_ path: String) -> Float? {
+            if let channels = json["channels"] as? [String: Any],
+               let number = channels[path] as? NSNumber {
+                return number.floatValue
+            }
+            if let nativeValues = json["native_channel_values"] as? [String: Any],
+               let number = nativeValues[path] as? NSNumber {
+                return number.floatValue
+            }
+            if let rawChannels = json["raw_channels"] as? [String: Any],
+               let number = rawChannels[path] as? NSNumber {
+                return number.floatValue
+            }
+            return nil
+        }
+
+        func rmuV16DVoiceCountForChannel(_ path: String) -> Int {
+            if let voiceCounts = json["channel_voice_counts"] as? [String: Any],
+               let number = voiceCounts[path] as? NSNumber {
+                return number.intValue
+            }
+            if let nativeCounts = json["native_channel_voice_counts"] as? [String: Any],
+               let number = nativeCounts[path] as? NSNumber {
+                return number.intValue
+            }
+            if let details = json["channel_details"] as? [String: Any],
+               let channelDetails = details[path] as? [String: Any],
+               let number = channelDetails["voice_count"] as? NSNumber {
+                return number.intValue
+            }
+            return 0
+        }
+
+        let rmuV16DBehaviorCodeVoices = rmuV16DVoiceCountForChannel("/ch/18")
+        let rmuV16DBehaviorGateVoices = rmuV16DVoiceCountForChannel("/ch/19")
+        let rmuV16DBehaviorCodeValue = rmuV16DNumberForChannel("/ch/18")
+        let rmuV16DBehaviorGateValue = rmuV16DNumberForChannel("/ch/19")
+
+        let rmuV16DBehaviorGateActive =
+            rmuV16DBehaviorGateVoices > 0 &&
+            (rmuV16DBehaviorGateValue ?? 0.0) >= 5.0
+
+        if rmuV16DBehaviorGateActive && rmuV16DBehaviorCodeVoices > 0 {
+            // RMU_V1_6D2_APPLY_DIRECT_BEHAVIOR_AUTHORITY
+            let rawBehavior = Int(round(rmuV16DBehaviorCodeValue ?? 0.0))
+            let clampedBehavior = Int32(max(0, min(7, rawBehavior)))
+            rmuV16DBehaviorAuthorityActive = true
+            rmuV16DBehaviorAuthorityCode = clampedBehavior
+            rmuV16DBehaviorAuthorityGate = rmuV16DBehaviorGateValue ?? 0.0
+            behaviorEffectCode = clampedBehavior
+            geospatialBehaviorEnabled = true
+        } else {
+            rmuV16DBehaviorAuthorityActive = false
+            rmuV16DBehaviorAuthorityGate = rmuV16DBehaviorGateValue ?? 0.0
+        }
+        // RMU_V1_6C_OPTIONAL_BEHAVIOR_CHANNEL_AUTHORITY_END
+
+        // RMU_V1_6E_DIRECT_RENDERER_APPLY_PASS_BEGIN
+        //
+        // Final authority pass. This reads direct /ch/N values from vcv_state.json
+        // after all older parser logic has run. It prevents old fixed arrays,
+        // stale scene helpers, or legacy behavior code from missing live VCV values.
+        //
+        // /ch/8  = scene / field layer
+        // /ch/18 = behavior code
+        // /ch/19 = behavior authority gate
+        func rmuV16ENumberForChannel(_ path: String) -> Float? {
+            if let channels = json["channels"] as? [String: Any],
+               let number = channels[path] as? NSNumber {
+                return number.floatValue
+            }
+            if let nativeValues = json["native_channel_values"] as? [String: Any],
+               let number = nativeValues[path] as? NSNumber {
+                return number.floatValue
+            }
+            if let rawChannels = json["raw_channels"] as? [String: Any],
+               let rawList = rawChannels[path] as? [Any],
+               let first = rawList.first as? NSNumber {
+                return first.floatValue
+            }
+            return nil
+        }
+
+        func rmuV16EVoiceCountForChannel(_ path: String) -> Int {
+            if let counts = json["channel_voice_counts"] as? [String: Any],
+               let number = counts[path] as? NSNumber {
+                return number.intValue
+            }
+            if let nativeCounts = json["native_channel_voice_counts"] as? [String: Any],
+               let number = nativeCounts[path] as? NSNumber {
+                return number.intValue
+            }
+            return 0
+        }
+
+        if let sceneValue = rmuV16ENumberForChannel("/ch/8"),
+           rmuV16EVoiceCountForChannel("/ch/8") > 0 {
+            let directScene = max(1, min(6, Int(round(sceneValue))))
+            vcvSceneIndex = directScene
+
+            if fieldLayerWeights.count > 0 {
+                selectedFieldLayerIndex = max(0, min(fieldLayerWeights.count - 1, directScene - 1))
+            }
+        }
+
+        let rmuV16EBehaviorGateValue = rmuV16ENumberForChannel("/ch/19") ?? 0.0
+        let rmuV16EBehaviorGateActive =
+            rmuV16EVoiceCountForChannel("/ch/19") > 0 &&
+            rmuV16EBehaviorGateValue >= 5.0
+
+        if rmuV16EBehaviorGateActive,
+           rmuV16EVoiceCountForChannel("/ch/18") > 0,
+           let behaviorValue = rmuV16ENumberForChannel("/ch/18") {
+            let directBehavior = Int32(max(0, min(7, Int(round(behaviorValue)))))
+            behaviorEffectCode = directBehavior
+            geospatialBehaviorEnabled = true
+
+            rmuV16DBehaviorAuthorityActive = true
+            rmuV16DBehaviorAuthorityCode = directBehavior
+            rmuV16DBehaviorAuthorityGate = rmuV16EBehaviorGateValue
+        }
+        // RMU_V1_6E_DIRECT_RENDERER_APPLY_PASS_END
+
+
+        if let sceneNumber = json["scene_index"] as? NSNumber {
+            let scene = max(1, min(6, sceneNumber.intValue))
+            vcvSceneIndex = scene
+
+            if fieldLayerWeights.count > 0 {
+                selectedFieldLayerIndex = max(0, min(fieldLayerWeights.count - 1, scene - 1))
+            }
+
+            // RMU_V1_6B2_BEHAVIOR_AUTHORITY_REPAIR
+            // /ch/8 controls scene and field-layer selection only.
+            // Do not overwrite behaviorEffectCode here.
+            // Shift+E/manual behavior controls remain the authority for behavior cycling.
+        }
+
+if let probabilityNumber = (json["probability_value"] as? NSNumber) ?? (json["probability"] as? NSNumber) {
             let raw = Float(probabilityNumber.doubleValue)
             vcvRawChannelValues[0] = raw
             vcvChannelValues[0] = vcvSafeModeEnabled ? max(0.0, min(raw, 1.0)) : raw
@@ -1940,7 +2927,63 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
             if vcvChannelValues.count >= 12 { vcvChannelValues[11] = clamped }
             if externalDetected && vcvChannelEnabled.count >= 12 && vcvChannelEnabled[11] { geospatialParticleCohesion = smoothValue(current: geospatialParticleCohesion, target: clamped, amount: vcvSmoothingAmount) }
         }
-    }
+    
+        // RMU_V1_4B11_LOADVCVSTATE_CH13_CH14_DIRECT_FIX
+        // Direct renderer-side propagation for /ch/13 and /ch/14.
+        // The Python bridge JSON has already been verified correct. This block mirrors
+        // the working /ch/9-/ch/12 pattern by copying bridge state into the renderer arrays.
+        func rmuV14B11GravityPositionFromRaw(_ raw: Float) -> Float {
+            return max(-1.0, min(raw / 5.0, 1.0))
+        }
+
+        func rmuV14B11GravityStrengthFromRaw(_ raw: Float) -> Float {
+            let normalized = max(0.0, min((raw + 5.0) / 10.0, 1.0))
+            return max(0.0, min(normalized * 12.0, 12.0))
+        }
+
+        var rmuCh13Raw: Float? = nil
+        var rmuCh13Mapped: Float? = nil
+        if let n = json["gravity_well_position_raw"] as? NSNumber {
+            rmuCh13Raw = Float(n.doubleValue)
+        } else if let rawChannelValues = json["raw_channels"] as? [NSNumber], rawChannelValues.count >= 13 {
+            rmuCh13Raw = Float(rawChannelValues[12].doubleValue)
+        } else if let rawChannelValues = json["raw_channel_values"] as? [NSNumber], rawChannelValues.count >= 13 {
+            rmuCh13Raw = Float(rawChannelValues[12].doubleValue)
+        }
+        if let n = json["gravity_well_position"] as? NSNumber {
+            rmuCh13Mapped = Float(n.doubleValue)
+        } else if let raw = rmuCh13Raw {
+            rmuCh13Mapped = rmuV14B11GravityPositionFromRaw(raw)
+        }
+        if let raw = rmuCh13Raw, vcvRawChannelValues.count >= 13 {
+            vcvRawChannelValues[12] = raw
+        }
+        if let mapped = rmuCh13Mapped, vcvChannelValues.count >= 13 {
+            vcvChannelValues[12] = max(-1.0, min(mapped, 1.0))
+        }
+
+        var rmuCh14Raw: Float? = nil
+        var rmuCh14Mapped: Float? = nil
+        if let n = json["gravity_well_strength_raw"] as? NSNumber {
+            rmuCh14Raw = Float(n.doubleValue)
+        } else if let rawChannelValues = json["raw_channels"] as? [NSNumber], rawChannelValues.count >= 14 {
+            rmuCh14Raw = Float(rawChannelValues[13].doubleValue)
+        } else if let rawChannelValues = json["raw_channel_values"] as? [NSNumber], rawChannelValues.count >= 14 {
+            rmuCh14Raw = Float(rawChannelValues[13].doubleValue)
+        }
+        if let n = json["gravity_well_strength"] as? NSNumber {
+            rmuCh14Mapped = Float(n.doubleValue)
+        } else if let raw = rmuCh14Raw {
+            rmuCh14Mapped = rmuV14B11GravityStrengthFromRaw(raw)
+        }
+        if let raw = rmuCh14Raw, vcvRawChannelValues.count >= 14 {
+            vcvRawChannelValues[13] = raw
+        }
+        if let mapped = rmuCh14Mapped, vcvChannelValues.count >= 14 {
+            vcvChannelValues[13] = max(0.0, min(mapped, 12.0))
+        }
+
+}
 
     func datasetCouplingStateURL() -> URL {
         URL(fileURLWithPath: projectRoot)
@@ -2088,7 +3131,13 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
                 "vcv_channel_enabled": vcvChannelEnabled,
                 "vcv_channel_labels": vcvChannelLabels,
                 "vcv_channel_targets": vcvChannelTargets,
-                "vcv_safe_mode_enabled": vcvSafeModeEnabled
+                "vcv_safe_mode_enabled": false,
+                "vcv_compact_hud_mode": vcvCompactHUDMode,
+                "vcv_detail_panel_visible": vcvDetailPanelVisible,
+                "vcv_detail_page_index": vcvDetailPageIndex,
+                "vcv_authority_scene_index": vcvAuthoritySceneIndex,
+                "vcv_authority_color_mode": vcvAuthorityColorMode,
+                "vcv_authority_field_layer_index": vcvAuthorityFieldLayerIndex
             ],
             "fields": [
                 "field_layers_enabled": fieldLayersEnabled,
@@ -2141,7 +3190,15 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
             if let targets = vcv["vcv_channel_targets"] as? [String], targets.count == vcvChannelTargets.count {
                 vcvChannelTargets = targets
             }
-            vcvSafeModeEnabled = (vcv["vcv_safe_mode_enabled"] as? Bool) ?? vcvSafeModeEnabled
+            // RMU_V1_5F_SAFE_MODE_RUNTIME_OVERRIDE
+            // v1.5D+ bridge output is already mapped/clamped. Do not resurrect old SAFE=true runtime state.
+            vcvSafeModeEnabled = false
+            vcvCompactHUDMode = (vcv["vcv_compact_hud_mode"] as? Bool) ?? vcvCompactHUDMode
+            vcvDetailPanelVisible = (vcv["vcv_detail_panel_visible"] as? Bool) ?? vcvDetailPanelVisible
+            vcvDetailPageIndex = (vcv["vcv_detail_page_index"] as? Int) ?? vcvDetailPageIndex
+            vcvAuthoritySceneIndex = (vcv["vcv_authority_scene_index"] as? Int) ?? vcvAuthoritySceneIndex
+            if let restoredColor = vcv["vcv_authority_color_mode"] as? NSNumber { vcvAuthorityColorMode = restoredColor.int32Value }
+            vcvAuthorityFieldLayerIndex = (vcv["vcv_authority_field_layer_index"] as? Int) ?? vcvAuthorityFieldLayerIndex
         }
 
         if let fields = state["fields"] as? [String: Any] {
@@ -2331,7 +3388,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         let window = KeyCatcherWindow(contentRect: frame, styleMask: styleMask, backing: .buffered, defer: false)
-        window.title = "RealMathUniverse Metal Renderer v1.3F6"
+        window.title = "RealMathUniverse Metal Renderer v1.6G4"
         window.center()
         window.isReleasedWhenClosed = false
         if alwaysOnTop { window.level = .floating }
@@ -2376,7 +3433,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         window.makeKeyAndOrderFront(nil)
         window.orderFrontRegardless()
 
-        print("RealMathUniverse Metal Renderer v1.3F6")
+        print("RealMathUniverse Metal Renderer v1.6G4")
         print("Project root: \(projectRoot)")
         print("Field layers: F toggles system, TAB selects layer, SHIFT+SPACE toggles selected layer, / and \\ adjust selected weight")
         print("Session ID: \(sessionID)")
@@ -2588,6 +3645,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         ])
 
         print("RMU v1.3F9G behavior engine: \(currentBehaviorEnabled ? "ON" : "OFF") | behaviorEffectCode=\(renderer?.behaviorEffectCode ?? -1)")
+        hud?.updateText()
     }
 
 
@@ -2802,6 +3860,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             "particle_mass": renderer?.geospatialParticleMass ?? 1.0,
             "particle_turbulence": renderer?.geospatialParticleTurbulence ?? 0.0,
             "particle_cohesion": renderer?.geospatialParticleCohesion ?? 0.0,
+            "gravity_well_position": renderer?.geospatialGravityWellPosition ?? 0.0,
+            "gravity_well_strength": renderer?.geospatialGravityWellStrength ?? 6.0,
             "particle_source_authority": "renderer_geospatial_authority",
             "particle_source_mode": "crab_nav_csv_particles",
             "particle_source_csv": "/Users/Joe/Documents/RealMathUniverse/data/raw/merged_navdata.csv",
@@ -2876,6 +3936,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             "behavior_mode": currentBehaviorMode,
             "behavior_lock": false,
             "behavior_source": "renderer_manual",
+            "species_architecture_version": "v1.4A",
+            "species_architecture_enabled": true,
+            "species_count": 22,
+            "species_assignment": "deterministic_id_mod_22",
             "respawn_on_capture": currentRespawn,
             "updated_by": "metal_renderer_v1_3F6_particle_reset_runtime",
             "source": source,

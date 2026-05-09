@@ -1,0 +1,72 @@
+{
+  "renderer_version" : "v1.2B3",
+  "captures" : [
+    {
+      "field_layers_enabled" : false,
+      "trails_enabled" : false,
+      "frame_time_ms" : 0.34999847412109375,
+      "horizon_ring_enabled" : true,
+      "active_scene_preset" : "manual",
+      "timestamp_utc" : "2026-05-07T05:33:42Z",
+      "camera" : {
+        "manual_world_radius" : 5,
+        "rotation_radians" : 0.069813169538974762,
+        "pan_x" : 0,
+        "pan_y" : 0
+      },
+      "relative_path" : "output\/screenshots\/metal\/20260507_053321_UTC\/RealMathUniverse_v1_3F6_geospatial_static_paused_classic_99k_window_20260507_053342_UTC.png",
+      "render_sample_count" : 99966,
+      "particle_speed" : 0.60000014305114746,
+      "presentation_mode" : false,
+      "grid_enabled" : false,
+      "source_particle_count" : 99966,
+      "burst_total" : 1,
+      "runtime_mode" : "geospatial_static_paused",
+      "behavior_mode" : "geospatial_static_paused",
+      "late_frame_warning" : false,
+      "color_mode" : "classic",
+      "sim_time" : 0,
+      "sim_frame" : 0,
+      "clean_capture" : false,
+      "center_marker_enabled" : true,
+      "burst_interval_setting" : 0.69999999999999996,
+      "timestamp_unix" : 1778132022.4117899,
+      "point_count" : 99966,
+      "burst_count_setting" : 5,
+      "burst_index" : 1,
+      "auto_camera_enabled" : false,
+      "probability_source" : "vcv",
+      "field_layer_summary" : "R:0.33 O:0.53 V:0.83 T:1.90 S:1.13",
+      "probability_overlay_enabled" : true,
+      "particle_mass" : 2.829174280166626,
+      "filename" : "RealMathUniverse_v1_3F6_geospatial_static_paused_classic_99k_window_20260507_053342_UTC.png",
+      "fps" : 60.056984674060594,
+      "window_mode" : "standard",
+      "trail_length" : 12,
+      "field_layer_enabled_flags" : [
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "field_layer_weights" : [
+        0.32621482014656067,
+        0.52726554870605469,
+        0.82779490947723389,
+        1.896571159362793,
+        1.1344679594039917
+      ],
+      "selected_field_layer" : "radial",
+      "vcv_status" : "external 0.2s",
+      "selected_field_layer_weight" : 0.32621482014656067,
+      "active_visual_state_name" : "default_camera",
+      "curvature_overlay_enabled" : true
+    }
+  ],
+  "project_root" : "\/Users\/Joe\/Documents\/RealMathUniverse",
+  "capture_count" : 1,
+  "session_id" : "20260507_053321_UTC",
+  "last_updated_utc" : "2026-05-07T05:33:42Z",
+  "window_mode" : "standard"
+}

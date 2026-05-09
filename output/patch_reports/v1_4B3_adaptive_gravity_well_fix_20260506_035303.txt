@@ -1,0 +1,12 @@
+RealMathUniverse v1.4B3 Adaptive Gravity Well Fix
+project_root=/Users/Joe/Documents/RealMathUniverse
+
+BACKUP /Users/Joe/Documents/RealMathUniverse/src/control/vcv_osc_bridge.py -> /Users/Joe/Documents/RealMathUniverse/output/backups/v1_4B3_adaptive_gravity_20260506_035303/vcv_osc_bridge.py
+BACKUP /Users/Joe/Documents/RealMathUniverse/metal_renderer/Sources/RealMathUniverseMetalRenderer/main.swift -> /Users/Joe/Documents/RealMathUniverse/output/backups/v1_4B3_adaptive_gravity_20260506_035303/main.swift
+PATCH bridge: appended gravity label overrides
+NOTE bridge: compact control vcv dictionary anchor not found; vcv_state still gets **self.values
+UPDATED /Users/Joe/Documents/RealMathUniverse/src/control/vcv_osc_bridge.py
+  File "/Users/Joe/Documents/RealMathUniverse/src/control/vcv_osc_bridge.py", line 296
+    \nCHANNEL_LABELS[13] = "gravity_well_position"\nCHANNEL_LABELS[14] = "gravity_well_strength"\n
+     ^
+SyntaxError: unexpected character after line continuation character

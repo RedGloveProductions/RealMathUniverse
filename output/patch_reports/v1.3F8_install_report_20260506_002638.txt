@@ -1,0 +1,17 @@
+RealMathUniverse v1.3F8 Clean OSC 10-12 Channel Map
+project_root=/Users/Joe/Documents/RealMathUniverse
+bridge_path=/Users/Joe/Documents/RealMathUniverse/src/control/vcv_osc_bridge.py
+swift_path=/Users/Joe/Documents/RealMathUniverse/metal_renderer/Sources/RealMathUniverseMetalRenderer/main.swift
+restore_from_backup=False
+
+BACKUP /Users/Joe/Documents/RealMathUniverse/src/control/vcv_osc_bridge.py -> /Users/Joe/Documents/RealMathUniverse/output/backups/v1.3F8_20260506_002638/vcv_osc_bridge.py
+BACKUP /Users/Joe/Documents/RealMathUniverse/metal_renderer/Sources/RealMathUniverseMetalRenderer/main.swift -> /Users/Joe/Documents/RealMathUniverse/output/backups/v1.3F8_20260506_002638/main.swift
+Bridge cleanup: removed previous bad v1.3F7B fallback hook
+Swift cleanup: no bad injected lines found
+Bridge labels: /ch/11 and /ch/12 already named
+Bridge dispatcher: no small range found, assuming already broad enough
+Bridge helpers: turbulence/cohesion helpers already present
+Bridge defaults: turbulence/cohesion defaults already present
+FAIL: Could not find existing /ch/10 update_value branch. Refusing to guess.
+
+INSTALL FAILED: Could not find existing /ch/10 update_value branch. Refusing to guess.

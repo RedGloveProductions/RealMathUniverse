@@ -1,0 +1,7 @@
+{
+  "version": "v1.6G_hud_authority_schema_update",
+  "ok": false,
+  "message": "patch/build failed; restored original main.swift. Error: missing required v1.6G HUD markers: ['RMU_V1_6G_HUD_COMPACT_VCV_AUTHORITY_SCHEMA']",
+  "backup": "/Users/Joe/Documents/RealMathUniverse/backups/v1.6G_hud_authority_schema_update/main.swift.20260507_092421.bak",
+  "timestamp_unix": 1778160261.907896
+}

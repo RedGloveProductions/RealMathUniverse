@@ -1,0 +1,8 @@
+RealMathUniverse v1.4B4A Bridge Syntax Hotfix
+project_root=/Users/Joe/Documents/RealMathUniverse
+BACKUP /Users/Joe/Documents/RealMathUniverse/src/control/vcv_osc_bridge.py -> /Users/Joe/Documents/RealMathUniverse/output/backups/v1_4B4A_bridge_syntax_20260506_040107/vcv_osc_bridge.py
+INSTALL COMPLETE
+Now run:
+  cd /Users/Joe/Documents/RealMathUniverse
+  python3 -m py_compile src/control/vcv_osc_bridge.py
+Then restart session cleanly after the full gravity patch is repaired.

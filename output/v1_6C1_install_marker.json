@@ -1,0 +1,7 @@
+{
+  "version": "v1.6C1_renderer_color_behavior_authority_repair",
+  "installed_at_unix": 1778143586.803242,
+  "project_root": "/Users/Joe/Documents/RealMathUniverse",
+  "normal_run": "./scripts/run_metal_session.sh preview 1920x1080",
+  "validator": "python3 tools/validate_v1_6C1_renderer_color_behavior_authority.py"
+}

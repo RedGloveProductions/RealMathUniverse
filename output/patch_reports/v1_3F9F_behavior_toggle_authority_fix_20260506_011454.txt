@@ -1,0 +1,7 @@
+RealMathUniverse v1.3F9F Behavior Toggle Authority Fix
+project_root=/Users/Joe/Documents/RealMathUniverse
+swift_path=/Users/Joe/Documents/RealMathUniverse/metal_renderer/Sources/RealMathUniverseMetalRenderer/main.swift
+
+BACKUP /Users/Joe/Documents/RealMathUniverse/metal_renderer/Sources/RealMathUniverseMetalRenderer/main.swift -> /Users/Joe/Documents/RealMathUniverse/output/backups/v1_3F9F_20260506_011454/main.swift
+
+INSTALL FAILED: too many values to unpack (expected 2)

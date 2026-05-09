@@ -1,0 +1,24 @@
+{
+  "version": "v1.6B1_renderer_species_identity_metal_repair",
+  "ok": true,
+  "timestamp_unix": 1778142020.740216,
+  "project_root": "/Users/Joe/Documents/RealMathUniverse",
+  "backup": "/Users/Joe/Documents/RealMathUniverse/backups/v1.6B1_renderer_species_identity_metal_repair/main.swift.20260507_042013.bak",
+  "species_identity_records": 99966,
+  "swift_build_ok": true,
+  "shader_species_consumption": true,
+  "flags": [
+    "state=True",
+    "loader=True",
+    "sameUpload=True",
+    "postGPU=True",
+    "encoder=True",
+    "shaderArgs=True",
+    "shaderBody=True",
+    "speed=True",
+    "mass=True",
+    "turb=True",
+    "coh=False",
+    "diag=True"
+  ]
+}

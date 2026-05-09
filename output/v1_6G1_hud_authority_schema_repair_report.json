@@ -1,0 +1,10 @@
+{
+  "version": "v1.6G1_hud_authority_schema_repair",
+  "ok": true,
+  "backup": "/Users/Joe/Documents/RealMathUniverse/backups/v1_6G1_hud_authority_schema_repair/main.swift.20260507_093018.bak",
+  "timestamp_unix": 1778160626.727778,
+  "notes": [
+    "Patched HUD with line-scan VCV block replacement.",
+    "Displays v1.6D1 bridge, v1.6F pre-encode authority, /ch/8, /ch/18, /ch/19, species identity, and vertex color authority."
+  ]
+}

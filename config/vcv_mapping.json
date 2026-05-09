@@ -12,8 +12,8 @@
     "/ch/8": "scene",
     "/ch/9": "particle_speed",
     "/ch/10": "particle_mass",
-    "/ch/11": "aux_11",
-    "/ch/12": "aux_12",
+    "/ch/11": "particle_turbulence",
+    "/ch/12": "particle_cohesion",
     "/ch/13": "aux_13",
     "/ch/14": "aux_14",
     "/ch/15": "aux_15",
@@ -46,8 +46,8 @@
     "/ch/8": "scene_index",
     "/ch/9": "particle_speed",
     "/ch/10": "particle_mass",
-    "/ch/11": "aux_11",
-    "/ch/12": "aux_12",
+    "/ch/11": "particle_turbulence",
+    "/ch/12": "particle_cohesion",
     "/ch/13": "aux_13",
     "/ch/14": "aux_14",
     "/ch/15": "aux_15",
@@ -93,6 +93,14 @@
     "particle_mass": [
       0.2,
       5.0
+    ],
+    "particle_turbulence": [
+      0.0,
+      2.5
+    ],
+    "particle_cohesion": [
+      0.0,
+      3.0
     ]
   },
   "notes": "Fixed generic /ch/1 through /ch/8 channel contract. No VCV profile system.",
@@ -107,8 +115,8 @@
     "/ch/8": "scene",
     "/ch/9": "particle_speed",
     "/ch/10": "particle_mass",
-    "/ch/11": "aux_11",
-    "/ch/12": "aux_12",
+    "/ch/11": "particle_turbulence",
+    "/ch/12": "particle_cohesion",
     "/ch/13": "aux_13",
     "/ch/14": "aux_14",
     "/ch/15": "aux_15",
@@ -154,6 +162,65 @@
         5.0
       ],
       "description": "Lorenz/VCV bipolar mass/inertia control. Negative voltage is light, positive is heavy."
+    }
+  },
+  "v1_3F7_particle_controls": {
+    "version": "v1.3F7",
+    "name": "VCV Turbulence + Cohesion Controls",
+    "channel_map": {
+      "/ch/9": {
+        "name": "particle_speed",
+        "input_range": [
+          -5.0,
+          5.0
+        ],
+        "output_range": [
+          0.0,
+          4.0
+        ],
+        "description": "Existing particle speed control inherited from v1.3F5/v1.3F6."
+      },
+      "/ch/10": {
+        "name": "particle_mass",
+        "input_range": [
+          -5.0,
+          5.0
+        ],
+        "output_range": [
+          0.1,
+          6.0
+        ],
+        "description": "Existing particle mass/inertia control inherited from v1.3F5/v1.3F6."
+      },
+      "/ch/11": {
+        "name": "particle_turbulence",
+        "input_range": [
+          -5.0,
+          5.0
+        ],
+        "output_range": [
+          0.0,
+          2.5
+        ],
+        "description": "Scatter, agitation, chaotic drift, swarm instability."
+      },
+      "/ch/12": {
+        "name": "particle_cohesion",
+        "input_range": [
+          -5.0,
+          5.0
+        ],
+        "output_range": [
+          0.0,
+          3.0
+        ],
+        "description": "Gathering, clustering, accretion, gravity-like pull."
+      }
+    },
+    "mapping_formula": "normalized = clamp((voltage + 5.0) / 10.0, 0.0, 1.0)",
+    "runtime_defaults": {
+      "particle_turbulence": 0.0,
+      "particle_cohesion": 0.0
     }
   }
 }

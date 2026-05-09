@@ -1,0 +1,21 @@
+{
+  "version": "v1.6D_stepping_control_schema_repair",
+  "ok": true,
+  "timestamp_unix": 1778149103.8142989,
+  "project_root": "/Users/Joe/Documents/RealMathUniverse",
+  "main_swift": "/Users/Joe/Documents/RealMathUniverse/metal_renderer/Sources/RealMathUniverseMetalRenderer/main.swift",
+  "main_backup": "/Users/Joe/Documents/RealMathUniverse/backups/v1.6D_stepping_control_schema_repair/main.swift.main.20260507_061818.bak",
+  "bridge": "/Users/Joe/Documents/RealMathUniverse/src/control/vcv_osc_bridge.py",
+  "bridge_backup": "/Users/Joe/Documents/RealMathUniverse/backups/v1.6D_stepping_control_schema_repair/vcv_osc_bridge.py.bridge.20260507_061823.bak",
+  "swift_build_ok": true,
+  "flags": [
+    "main_behavior_block_replaced=1",
+    "bridge_label_adaptive_aux_18_to_behavior_code=not_found",
+    "bridge_label_adaptive_aux_19_to_behavior_authority_gate=not_found"
+  ],
+  "contract": {
+    "/ch/8": "scene / field layer only",
+    "/ch/18": "behavior_code, stepped 0..7, only read when /ch/19 gate is high",
+    "/ch/19": "behavior_authority_gate, low/unplugged = manual Shift+E, >=5V = VCV behavior authority"
+  }
+}

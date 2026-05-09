@@ -1,0 +1,13 @@
+{
+  "version": "v1.6G4_left_physics_hud_section_repair",
+  "ok": true,
+  "backup": "/Users/Joe/Documents/RealMathUniverse/backups/v1_6G4_left_physics_hud_section_repair/main.swift.20260507_100823.bak",
+  "physics_start_line": 580,
+  "dataset_start_line": 591,
+  "timestamp_unix": 1778162910.647874,
+  "notes": [
+    "Patched left PHYSICS section by locating PHYSICS-to-DATASET block.",
+    "No nonexistent renderer fields are referenced.",
+    "Left PHYSICS panel now displays behavior authority, gate, effective code, field authority, recipe, and v1.6F apply source."
+  ]
+}

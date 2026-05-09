@@ -1,0 +1,6 @@
+{
+  "version": "v1.6A_species_identity_data_contract",
+  "installed_at_unix": 1778137419.061749,
+  "project_root": "/Users/Joe/Documents/RealMathUniverse",
+  "validator": "python3 tools/validate_species_identity_v1_6A.py"
+}

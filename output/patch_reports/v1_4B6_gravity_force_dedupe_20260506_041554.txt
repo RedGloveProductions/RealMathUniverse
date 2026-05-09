@@ -1,0 +1,27 @@
+RealMathUniverse v1.4B6 Gravity Force Dedupe
+project_root=/Users/Joe/Documents/RealMathUniverse
+swift_path=/Users/Joe/Documents/RealMathUniverse/metal_renderer/Sources/RealMathUniverseMetalRenderer/main.swift
+
+BACKUP /Users/Joe/Documents/RealMathUniverse/metal_renderer/Sources/RealMathUniverseMetalRenderer/main.swift -> /Users/Joe/Documents/RealMathUniverse/output/backups/v1_4B6_gravity_force_dedupe_20260506_041554/main.swift
+Removed stale geospatial encoder overwrite block(s): 0
+Found wellPos gravity block count: 1
+Swift unchanged
+WROTE /Users/Joe/Documents/RealMathUniverse/scripts/verify_v1_4B6_gravity_force_dedupe.py
+WROTE /Users/Joe/Documents/RealMathUniverse/docs/VERSION_v1_4B6_GRAVITY_FORCE_DEDUPE.md
+Running swift build -c release...
+swift build returncode=0
+--- swift stdout tail ---
+[0/1] Planning build
+Building for production...
+[0/2] Write swift-version--1AB21518FC5DEDBE.txt
+Build complete! (0.23s)
+
+
+INSTALL COMPLETE
+Restart:
+  cd /Users/Joe/Documents/RealMathUniverse
+  pkill -f RealMathUniverseMetalRenderer 2>/dev/null || true
+  source .venv/bin/activate
+  ./scripts/run_metal_session.sh preview 1920x1080
+Verify:
+  python3 scripts/verify_v1_4B6_gravity_force_dedupe.py

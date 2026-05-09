@@ -1,15 +1,16 @@
 {
-  "timestamp_unix" : 1777967011.0517769,
   "version" : "1.3F6",
-  "collapse_behavior" : {
-    "behavior_mode" : "field_pressure_bounce",
-    "source" : "renderer_manual",
-    "timestamp_unix" : 1777967011.0517769,
-    "locked" : false
-  },
-  "behavior_lock" : false,
-  "behavior_source" : "renderer_manual",
+  "behavior_timestamp_unix" : 1778156089.8065848,
   "updated_by" : "metal_renderer_v1_3D11_behavior_state",
-  "behavior_timestamp_unix" : 1777967011.0517769,
-  "behavior_mode" : "field_pressure_bounce"
+  "behavior_source" : "renderer_manual",
+  "behavior_mode" : "stable_orbit_cloud",
+  "behavior_lock" : false,
+  "behavior_enabled" : true,
+  "timestamp_unix" : 1778156089.8065848,
+  "collapse_behavior" : {
+    "timestamp_unix" : 1778156089.8065848,
+    "locked" : false,
+    "source" : "renderer_manual",
+    "behavior_mode" : "stable_orbit_cloud"
+  }
 }

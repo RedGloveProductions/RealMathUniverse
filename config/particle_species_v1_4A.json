@@ -1,0 +1,411 @@
+{
+  "version": "1.4A",
+  "name": "RealMathUniverse Particle Species Architecture",
+  "families": [
+    "crab_geospatial",
+    "lepton",
+    "quark",
+    "boson_like",
+    "higgs_like",
+    "composite"
+  ],
+  "assignment": "deterministic_id_mod_22",
+  "species": [
+    {
+      "id": 0,
+      "name": "crab_default",
+      "family": "crab_geospatial",
+      "real_reference": {
+        "charge_e": 0.0,
+        "note": "reference values retained; simulation values are scaled/reduced"
+      },
+      "simulation": {
+        "mass": 1.0,
+        "charge_e": 0.0,
+        "vcv_speed_response": 1.0,
+        "vcv_mass_response": 1.0,
+        "vcv_turbulence_response": 1.0,
+        "vcv_cohesion_response": 1.0,
+        "strong_coupling": 0.15
+      }
+    },
+    {
+      "id": 1,
+      "name": "electron",
+      "family": "lepton",
+      "real_reference": {
+        "charge_e": -1.0,
+        "note": "reference values retained; simulation values are scaled/reduced"
+      },
+      "simulation": {
+        "mass": 0.35,
+        "charge_e": -1.0,
+        "vcv_speed_response": 1.35,
+        "vcv_mass_response": 0.65,
+        "vcv_turbulence_response": 1.15,
+        "vcv_cohesion_response": 0.1,
+        "strong_coupling": 0.0
+      }
+    },
+    {
+      "id": 2,
+      "name": "positron",
+      "family": "lepton",
+      "real_reference": {
+        "charge_e": 1.0,
+        "note": "reference values retained; simulation values are scaled/reduced"
+      },
+      "simulation": {
+        "mass": 0.35,
+        "charge_e": 1.0,
+        "vcv_speed_response": 1.35,
+        "vcv_mass_response": 0.65,
+        "vcv_turbulence_response": 1.15,
+        "vcv_cohesion_response": 0.1,
+        "strong_coupling": 0.0
+      }
+    },
+    {
+      "id": 3,
+      "name": "electron_neutrino",
+      "family": "lepton",
+      "real_reference": {
+        "charge_e": 0.0,
+        "note": "reference values retained; simulation values are scaled/reduced"
+      },
+      "simulation": {
+        "mass": 0.12,
+        "charge_e": 0.0,
+        "vcv_speed_response": 1.6,
+        "vcv_mass_response": 0.25,
+        "vcv_turbulence_response": 0.35,
+        "vcv_cohesion_response": 0.02,
+        "strong_coupling": 0.0
+      }
+    },
+    {
+      "id": 4,
+      "name": "up_quark",
+      "family": "quark",
+      "real_reference": {
+        "charge_e": 0.6666667,
+        "note": "reference values retained; simulation values are scaled/reduced"
+      },
+      "simulation": {
+        "mass": 0.65,
+        "charge_e": 0.6666667,
+        "vcv_speed_response": 0.9,
+        "vcv_mass_response": 0.75,
+        "vcv_turbulence_response": 0.65,
+        "vcv_cohesion_response": 1.35,
+        "strong_coupling": 1.0
+      }
+    },
+    {
+      "id": 5,
+      "name": "down_quark",
+      "family": "quark",
+      "real_reference": {
+        "charge_e": -0.3333333,
+        "note": "reference values retained; simulation values are scaled/reduced"
+      },
+      "simulation": {
+        "mass": 0.8,
+        "charge_e": -0.3333333,
+        "vcv_speed_response": 0.85,
+        "vcv_mass_response": 0.8,
+        "vcv_turbulence_response": 0.6,
+        "vcv_cohesion_response": 1.4,
+        "strong_coupling": 1.0
+      }
+    },
+    {
+      "id": 6,
+      "name": "photon_like",
+      "family": "boson_like",
+      "real_reference": {
+        "charge_e": 0.0,
+        "note": "reference values retained; simulation values are scaled/reduced"
+      },
+      "simulation": {
+        "mass": 0.05,
+        "charge_e": 0.0,
+        "vcv_speed_response": 1.8,
+        "vcv_mass_response": 0.05,
+        "vcv_turbulence_response": 1.25,
+        "vcv_cohesion_response": 0.0,
+        "strong_coupling": 0.0
+      }
+    },
+    {
+      "id": 7,
+      "name": "gluon_like",
+      "family": "boson_like",
+      "real_reference": {
+        "charge_e": 0.0,
+        "note": "reference values retained; simulation values are scaled/reduced"
+      },
+      "simulation": {
+        "mass": 0.08,
+        "charge_e": 0.0,
+        "vcv_speed_response": 1.25,
+        "vcv_mass_response": 0.1,
+        "vcv_turbulence_response": 1.4,
+        "vcv_cohesion_response": 1.6,
+        "strong_coupling": 1.25
+      }
+    },
+    {
+      "id": 8,
+      "name": "higgs_excitation",
+      "family": "higgs_like",
+      "real_reference": {
+        "charge_e": 0.0,
+        "note": "reference values retained; simulation values are scaled/reduced"
+      },
+      "simulation": {
+        "mass": 2.25,
+        "charge_e": 0.0,
+        "vcv_speed_response": 0.45,
+        "vcv_mass_response": 1.4,
+        "vcv_turbulence_response": 0.35,
+        "vcv_cohesion_response": 0.65,
+        "strong_coupling": 0.0
+      }
+    },
+    {
+      "id": 9,
+      "name": "proton_like",
+      "family": "composite",
+      "real_reference": {
+        "charge_e": 1.0,
+        "note": "reference values retained; simulation values are scaled/reduced"
+      },
+      "simulation": {
+        "mass": 1.75,
+        "charge_e": 1.0,
+        "vcv_speed_response": 0.55,
+        "vcv_mass_response": 1.2,
+        "vcv_turbulence_response": 0.45,
+        "vcv_cohesion_response": 1.25,
+        "strong_coupling": 1.15
+      }
+    },
+    {
+      "id": 10,
+      "name": "neutron_like",
+      "family": "composite",
+      "real_reference": {
+        "charge_e": 0.0,
+        "note": "reference values retained; simulation values are scaled/reduced"
+      },
+      "simulation": {
+        "mass": 1.85,
+        "charge_e": 0.0,
+        "vcv_speed_response": 0.5,
+        "vcv_mass_response": 1.25,
+        "vcv_turbulence_response": 0.4,
+        "vcv_cohesion_response": 1.3,
+        "strong_coupling": 1.15
+      }
+    },
+    {
+      "id": 11,
+      "name": "muon",
+      "family": "lepton",
+      "real_reference": {
+        "charge_e": -1.0,
+        "note": "reference values retained; simulation values are scaled/reduced"
+      },
+      "simulation": {
+        "mass": 0.7,
+        "charge_e": -1.0,
+        "vcv_speed_response": 1.1,
+        "vcv_mass_response": 0.85,
+        "vcv_turbulence_response": 0.85,
+        "vcv_cohesion_response": 0.1,
+        "strong_coupling": 0.0
+      }
+    },
+    {
+      "id": 12,
+      "name": "tau",
+      "family": "lepton",
+      "real_reference": {
+        "charge_e": -1.0,
+        "note": "reference values retained; simulation values are scaled/reduced"
+      },
+      "simulation": {
+        "mass": 1.2,
+        "charge_e": -1.0,
+        "vcv_speed_response": 0.9,
+        "vcv_mass_response": 1.0,
+        "vcv_turbulence_response": 0.7,
+        "vcv_cohesion_response": 0.1,
+        "strong_coupling": 0.0
+      }
+    },
+    {
+      "id": 13,
+      "name": "muon_neutrino",
+      "family": "lepton",
+      "real_reference": {
+        "charge_e": 0.0,
+        "note": "reference values retained; simulation values are scaled/reduced"
+      },
+      "simulation": {
+        "mass": 0.13,
+        "charge_e": 0.0,
+        "vcv_speed_response": 1.55,
+        "vcv_mass_response": 0.25,
+        "vcv_turbulence_response": 0.35,
+        "vcv_cohesion_response": 0.02,
+        "strong_coupling": 0.0
+      }
+    },
+    {
+      "id": 14,
+      "name": "tau_neutrino",
+      "family": "lepton",
+      "real_reference": {
+        "charge_e": 0.0,
+        "note": "reference values retained; simulation values are scaled/reduced"
+      },
+      "simulation": {
+        "mass": 0.14,
+        "charge_e": 0.0,
+        "vcv_speed_response": 1.5,
+        "vcv_mass_response": 0.25,
+        "vcv_turbulence_response": 0.35,
+        "vcv_cohesion_response": 0.02,
+        "strong_coupling": 0.0
+      }
+    },
+    {
+      "id": 15,
+      "name": "strange_quark",
+      "family": "quark",
+      "real_reference": {
+        "charge_e": -0.3333333,
+        "note": "reference values retained; simulation values are scaled/reduced"
+      },
+      "simulation": {
+        "mass": 0.95,
+        "charge_e": -0.3333333,
+        "vcv_speed_response": 0.8,
+        "vcv_mass_response": 0.9,
+        "vcv_turbulence_response": 0.6,
+        "vcv_cohesion_response": 1.4,
+        "strong_coupling": 1.05
+      }
+    },
+    {
+      "id": 16,
+      "name": "charm_quark",
+      "family": "quark",
+      "real_reference": {
+        "charge_e": 0.6666667,
+        "note": "reference values retained; simulation values are scaled/reduced"
+      },
+      "simulation": {
+        "mass": 1.2,
+        "charge_e": 0.6666667,
+        "vcv_speed_response": 0.7,
+        "vcv_mass_response": 1.05,
+        "vcv_turbulence_response": 0.55,
+        "vcv_cohesion_response": 1.35,
+        "strong_coupling": 1.05
+      }
+    },
+    {
+      "id": 17,
+      "name": "top_quark",
+      "family": "quark",
+      "real_reference": {
+        "charge_e": 0.6666667,
+        "note": "reference values retained; simulation values are scaled/reduced"
+      },
+      "simulation": {
+        "mass": 2.1,
+        "charge_e": 0.6666667,
+        "vcv_speed_response": 0.45,
+        "vcv_mass_response": 1.45,
+        "vcv_turbulence_response": 0.45,
+        "vcv_cohesion_response": 1.5,
+        "strong_coupling": 1.1
+      }
+    },
+    {
+      "id": 18,
+      "name": "bottom_quark",
+      "family": "quark",
+      "real_reference": {
+        "charge_e": -0.3333333,
+        "note": "reference values retained; simulation values are scaled/reduced"
+      },
+      "simulation": {
+        "mass": 1.55,
+        "charge_e": -0.3333333,
+        "vcv_speed_response": 0.6,
+        "vcv_mass_response": 1.2,
+        "vcv_turbulence_response": 0.5,
+        "vcv_cohesion_response": 1.45,
+        "strong_coupling": 1.1
+      }
+    },
+    {
+      "id": 19,
+      "name": "W_like",
+      "family": "boson_like",
+      "real_reference": {
+        "charge_e": 1.0,
+        "note": "reference values retained; simulation values are scaled/reduced"
+      },
+      "simulation": {
+        "mass": 1.5,
+        "charge_e": 1.0,
+        "vcv_speed_response": 0.8,
+        "vcv_mass_response": 1.2,
+        "vcv_turbulence_response": 0.6,
+        "vcv_cohesion_response": 0.25,
+        "strong_coupling": 0.0
+      }
+    },
+    {
+      "id": 20,
+      "name": "Z_like",
+      "family": "boson_like",
+      "real_reference": {
+        "charge_e": 0.0,
+        "note": "reference values retained; simulation values are scaled/reduced"
+      },
+      "simulation": {
+        "mass": 1.6,
+        "charge_e": 0.0,
+        "vcv_speed_response": 0.75,
+        "vcv_mass_response": 1.2,
+        "vcv_turbulence_response": 0.55,
+        "vcv_cohesion_response": 0.25,
+        "strong_coupling": 0.0
+      }
+    },
+    {
+      "id": 21,
+      "name": "meson_like",
+      "family": "composite",
+      "real_reference": {
+        "charge_e": 0.0,
+        "note": "reference values retained; simulation values are scaled/reduced"
+      },
+      "simulation": {
+        "mass": 1.15,
+        "charge_e": 0.0,
+        "vcv_speed_response": 0.75,
+        "vcv_mass_response": 1.0,
+        "vcv_turbulence_response": 0.75,
+        "vcv_cohesion_response": 1.25,
+        "strong_coupling": 1.1
+      }
+    }
+  ]
+}

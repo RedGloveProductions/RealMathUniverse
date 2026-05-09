@@ -1,0 +1,48 @@
+RealMathUniverse v1.4B VCV Gravity Well Position + Strength
+project_root=/Users/Joe/Documents/RealMathUniverse
+
+BACKUP /Users/Joe/Documents/RealMathUniverse/src/control/vcv_osc_bridge.py -> /Users/Joe/Documents/RealMathUniverse/output/backups/v1_4B_gravity_well_20260506_033733/vcv_osc_bridge.py
+BACKUP /Users/Joe/Documents/RealMathUniverse/metal_renderer/Sources/RealMathUniverseMetalRenderer/main.swift -> /Users/Joe/Documents/RealMathUniverse/output/backups/v1_4B_gravity_well_20260506_033733/main.swift
+PATCH bridge: promoted /ch/13 and /ch/14 labels
+PATCH bridge: added gravity helpers fallback
+PATCH bridge: added gravity defaults
+PATCH bridge: added /ch/13-/ch/14 update branches
+PATCH bridge: added gravity summary fields
+PATCH bridge: added gravity fields to control_state.vcv
+PATCH bridge: added top-level gravity control values
+PATCH bridge: added startup print mapping
+UPDATED /Users/Joe/Documents/RealMathUniverse/src/control/vcv_osc_bridge.py
+PATCH Swift: added renderer gravity well variables
+PATCH Metal: added gravityWellPosition/gravityWellStrength kernel args
+PATCH Swift: added encoder buffers 18/19
+WARNING Swift: exact cohesion parse anchor not found; renderer may use raw channel display only
+PATCH Metal: added controllable gravity well force
+PATCH runtime state: added gravity well fields
+PATCH console HUD: added WELL position/strength
+UPDATED /Users/Joe/Documents/RealMathUniverse/metal_renderer/Sources/RealMathUniverseMetalRenderer/main.swift
+WROTE docs/VERSION_v1_4B_VCV_GRAVITY_WELL_13_14.md
+WROTE scripts/verify_v1_4B_gravity_well_13_14.py
+Running swift build -c release...
+Building for production...
+[0/3] Write sources
+[1/3] Write swift-version--1AB21518FC5DEDBE.txt
+[3/4] Compiling RealMathUniverseMetalRenderer main.swift
+/Users/joe/Documents/RealMathUniverse/metal_renderer/Sources/RealMathUniverseMetalRenderer/main.swift:1665:13: warning: variable 'zeroVelocities' was never mutated; consider changing to 'let' constant
+1663 |               let liveBuffer = device.makeBuffer(bytes: particles, length: byteCount, options: [.storageModeShared]) else { return }
+1664 | 
+1665 |         var zeroVelocities = Array(repeating: Particle(position: SIMD3<Float>(0, 0, 0)), count: particles.count)
+     |             `- warning: variable 'zeroVelocities' was never mutated; consider changing to 'let' constant
+1666 |         guard let velocityBuffer = device.makeBuffer(bytes: zeroVelocities, length: byteCount, options: [.storageModeShared]) else { return }
+1667 | 
+[3/5] Write Objects.LinkFileList
+[4/5] Linking RealMathUniverseMetalRenderer
+Build complete! (6.60s)
+
+INSTALL COMPLETE
+Run:
+  cd /Users/Joe/Documents/RealMathUniverse
+  source .venv/bin/activate
+  ./scripts/run_metal_session.sh preview 1920x1080
+Verify:
+  python3 scripts/verify_v1_4B_gravity_well_13_14.py
+Report: /Users/Joe/Documents/RealMathUniverse/output/patch_reports/v1_4B_gravity_well_vcv_13_14_20260506_033733.txt

@@ -1,0 +1,5 @@
+RealMathUniverse v1.4B9 VCV /ch/13 /ch/14 Value Propagation
+project_root=/Users/Joe/Documents/RealMathUniverse
+
+BACKUP /Users/Joe/Documents/RealMathUniverse/metal_renderer/Sources/RealMathUniverseMetalRenderer/main.swift -> /Users/Joe/Documents/RealMathUniverse/output/backups/v1_4B9_vcv_13_14_value_propagation_20260506_044354/main.swift
+INSTALL FAILED: exact cohesion parse block not found

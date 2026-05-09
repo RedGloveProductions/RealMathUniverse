@@ -1,0 +1,10 @@
+RealMathUniverse v1.3F9H Atomic JSON Write Fix
+project_root=/Users/Joe/Documents/RealMathUniverse
+swift_path=/Users/Joe/Documents/RealMathUniverse/metal_renderer/Sources/RealMathUniverseMetalRenderer/main.swift
+
+BACKUP /Users/Joe/Documents/RealMathUniverse/metal_renderer/Sources/RealMathUniverseMetalRenderer/main.swift -> /Users/Joe/Documents/RealMathUniverse/output/backups/v1_3F9H_20260506_013305/main.swift
+NOTE moveItem(at:) found; unique temp filenames should prevent collision if tmp pattern was patched
+Atomic temp filename patch count: 0
+No known fixed temp filename pattern patched. Found markers: ['.tmp', 'moveItem', 'write(to:']
+
+INSTALL FAILED: Could not find a known Swift temp-file pattern to patch safely

@@ -1,0 +1,7 @@
+{
+  "version": "v1.6C_renderer_color_behavior_authority",
+  "ok": false,
+  "message": "patch/build failed; restored original main.swift. Error: Command '['swift', 'build', '-c', 'release']' returned non-zero exit status 1.",
+  "backup": "/Users/Joe/Documents/RealMathUniverse/backups/v1.6C_renderer_color_behavior_authority/main.swift.20260507_044211.bak",
+  "timestamp_unix": 1778143332.852127
+}

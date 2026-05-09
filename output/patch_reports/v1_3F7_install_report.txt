@@ -1,0 +1,25 @@
+RealMathUniverse v1.3F7 installer
+Patch: VCV Turbulence + Cohesion Controls
+Project root: /Users/joe/Documents/RealMathUniverse
+Dry run: False
+Backup root: /Users/joe/Documents/RealMathUniverse/output/backups/v1_3F7_20260506_000841
+
+WROTE: config/vcv_particle_controls_v1_3F7.json
+WROTE: docs/VERSION_v1.3F7.md
+WROTE: config/vcv_mapping.json
+WROTE: config/osc_config.json
+WROTE: config/render_config.json
+WROTE: output/runtime_state.json
+WROTE: output/control_state.json
+WROTE: output/vcv_state.json
+PATCH src/control/vcv_osc_bridge.py: inserted v1.3F7 helper block after imports
+UPDATED: src/control/vcv_osc_bridge.py
+PATCH metal_renderer/Sources/RealMathUniverseMetalRenderer/main.swift: added particleTurbulence/particleCohesion near particleMass
+PATCH metal_renderer/Sources/RealMathUniverseMetalRenderer/main.swift: inserted v1.3F7 runtime JSON parse block
+PATCH metal_renderer/Sources/RealMathUniverseMetalRenderer/main.swift: appended v1.3F7 renderer integration note
+UPDATED: metal_renderer/Sources/RealMathUniverseMetalRenderer/main.swift
+
+Install attempt complete.
+Run command:
+cd /Users/Joe/Documents/RealMathUniverse && source .venv/bin/activate && ./scripts/run_metal_session.sh preview 1920x1080
+Verify /ch/11 and /ch/12 in output/vcv_state.json, output/control_state.json, and renderer behavior.
