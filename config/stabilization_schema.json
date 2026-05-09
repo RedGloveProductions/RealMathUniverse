@@ -1,0 +1,66 @@
+{
+  "schema": "rmu.stabilization_schema.v1",
+  "version": "1.7B-stabilized-authority-inputs",
+  "description": "Debounce, latch, hysteresis, and rate-limit schema for VCV-driven scene, field, behavior, and camera stability.",
+  "global": {
+    "enabled": true,
+    "write_back_to_vcv_state": true,
+    "raw_copy_path": "output/vcv_state_raw.json",
+    "stable_copy_path": "output/vcv_state_stable.json",
+    "stabilizer_state_path": "output/vcv_state_stabilizer_state.json",
+    "minimum_loop_interval_seconds": 0.05
+  },
+  "channels": {
+    "/ch/8": {
+      "label": "scene_index",
+      "kind": "stepped_latched",
+      "min_step": 0,
+      "max_step": 7,
+      "raw_voltage_min": 0.0,
+      "raw_voltage_max": 10.0,
+      "hold_ms": 20000,
+      "min_change_interval_ms": 30000,
+      "initial_value": 0,
+      "purpose": "Scene and field recipe selector. Stabilized to prevent field-layer snapback and rapid recipe flicker."
+    },
+    "/ch/18": {
+      "label": "behavior_code",
+      "kind": "stepped_latched",
+      "min_step": 0,
+      "max_step": 7,
+      "raw_voltage_min": 0.0,
+      "raw_voltage_max": 10.0,
+      "hold_ms": 15000,
+      "min_change_interval_ms": 25000,
+      "initial_value": 0,
+      "purpose": "Behavior selector. Stabilized to prevent behavior machine-gun switching."
+    },
+    "/ch/19": {
+      "label": "behavior_authority_gate",
+      "kind": "hysteresis_gate",
+      "on_threshold": 5.5,
+      "off_threshold": 4.5,
+      "hold_ms": 5000,
+      "initial_value": 0,
+      "purpose": "VCV behavior authority gate. Uses hysteresis so noisy voltage does not rapidly take/release authority."
+    }
+  },
+  "camera": {
+    "lock_camera_to_manual": true,
+    "camera_authority": "keyboard_mouse",
+    "camera_should_not_follow_behavior": true,
+    "camera_should_not_follow_scene": true,
+    "notes": "This writes explicit stabilization metadata. If the renderer still changes camera on behavior change, a Swift-side v1.7C patch must remove behavior-to-camera coupling."
+  },
+  "fields": {
+    "prevent_snapback": true,
+    "last_valid_scene_holds_when_vcv_stale": true,
+    "scene_channel": "/ch/8"
+  },
+  "behavior": {
+    "prevent_fast_swapping": true,
+    "behavior_channel": "/ch/18",
+    "authority_gate_channel": "/ch/19",
+    "manual_fallback_when_gate_off": true
+  }
+}

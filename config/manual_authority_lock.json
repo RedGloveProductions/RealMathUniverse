@@ -1,0 +1,32 @@
+{
+  "schema": "rmu.manual_authority_lock.v1",
+  "version": "1.7G2-source-manual-locked-bridge-fixed",
+  "auto_fields_enabled": false,
+  "auto_behavior_enabled": false,
+  "auto_camera_enabled": false,
+  "manual_scene_index": 0,
+  "manual_behavior_code": 0,
+  "manual_field_weights": {
+    "radial": 1.0,
+    "orbital": 1.0,
+    "vertical": 1.0,
+    "turbulence": 1.0,
+    "shell": 1.0
+  },
+  "slow_auto": {
+    "field_hold_ms": 30000,
+    "field_min_change_interval_ms": 45000,
+    "behavior_hold_ms": 30000,
+    "behavior_min_change_interval_ms": 45000,
+    "gate_hold_ms": 10000,
+    "gate_on_threshold": 6.0,
+    "gate_off_threshold": 4.0
+  },
+  "locked_channels": ["/ch/2", "/ch/3", "/ch/4", "/ch/5", "/ch/6", "/ch/8", "/ch/18", "/ch/19"],
+  "camera": {
+    "authority": "keyboard_mouse",
+    "manual_locked": true,
+    "scene_may_not_switch_camera": true,
+    "behavior_may_not_switch_camera": true
+  }
+}

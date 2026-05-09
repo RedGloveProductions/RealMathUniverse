@@ -1,0 +1,66 @@
+{
+  "schema": "rmu.control_schema.v1_7J",
+  "version": "v1.7J-control-schema-consolidation",
+  "description": "Canonical control schema. Source systems propose. Runtime authority resolves. Renderer consumes only effective/manual-approved authority for field, behavior, and camera domains.",
+  "dangerous_domains_manual_by_default": ["field_weights", "field_recipe", "behavior", "camera", "dataset_coupling"],
+  "channel_map": {
+    "/ch/1":  {"label": "probability", "domain": "probability", "authority": "vcv_allowed"},
+    "/ch/2":  {"label": "radial", "domain": "field_weights", "authority": "manual_default_auto_opt_in"},
+    "/ch/3":  {"label": "orbital", "domain": "field_weights", "authority": "manual_default_auto_opt_in"},
+    "/ch/4":  {"label": "vertical", "domain": "field_weights", "authority": "manual_default_auto_opt_in"},
+    "/ch/5":  {"label": "turbulence", "domain": "field_weights", "authority": "manual_default_auto_opt_in"},
+    "/ch/6":  {"label": "shell", "domain": "field_weights", "authority": "manual_default_auto_opt_in"},
+    "/ch/7":  {"label": "color_mode", "domain": "color", "authority": "vcv_allowed"},
+    "/ch/8":  {"label": "scene_index", "domain": "field_recipe", "authority": "manual_default_auto_opt_in"},
+    "/ch/9":  {"label": "particle_speed", "domain": "species_or_global_motion", "authority": "vcv_allowed"},
+    "/ch/10": {"label": "species_mass_bank_A", "domain": "species_mass", "authority": "vcv_allowed", "voices": 16},
+    "/ch/11": {"label": "species_mass_bank_B", "domain": "species_mass", "authority": "vcv_allowed", "voices": 6},
+    "/ch/12": {"label": "particle_turbulence_bank_A", "domain": "species_turbulence", "authority": "vcv_allowed", "voices": 16},
+    "/ch/13": {"label": "particle_cohesion_bank_A", "domain": "species_cohesion", "authority": "vcv_allowed", "voices": 16},
+    "/ch/14": {"label": "gravity_well_position", "domain": "gravity", "authority": "vcv_allowed", "voices": 4},
+    "/ch/15": {"label": "gravity_well_strength", "domain": "gravity", "authority": "vcv_allowed"},
+    "/ch/16": {"label": "species_color_hsl_bank_A", "domain": "species_color", "authority": "vcv_allowed", "voices": 16},
+    "/ch/17": {"label": "species_color_hsl_bank_B", "domain": "species_color", "authority": "vcv_allowed", "voices": 6},
+    "/ch/18": {"label": "behavior_code", "domain": "behavior", "authority": "manual_default_auto_opt_in"},
+    "/ch/19": {"label": "behavior_authority_gate", "domain": "behavior", "authority": "manual_default_auto_opt_in"},
+    "/ch/28": {"label": "probability_bank_B", "domain": "species_probability", "authority": "vcv_allowed", "voices": 6},
+    "/ch/29": {"label": "color_mode_bank_B", "domain": "species_color", "authority": "vcv_allowed", "voices": 6},
+    "/ch/30": {"label": "particle_speed_bank_B", "domain": "species_speed", "authority": "vcv_allowed", "voices": 6},
+    "/ch/31": {"label": "particle_turbulence_bank_B", "domain": "species_turbulence", "authority": "vcv_allowed", "voices": 6},
+    "/ch/32": {"label": "particle_cohesion_bank_B", "domain": "species_cohesion", "authority": "vcv_allowed", "voices": 6}
+  },
+  "defaults": {
+    "auto_fields_enabled": false,
+    "auto_behavior_enabled": false,
+    "auto_camera_enabled": false,
+    "linked_behavior_presets_enabled": false,
+    "linked_scene_presets_enabled": false,
+    "dataset_coupling_mode": "observe",
+    "manual_scene_index": 0,
+    "manual_behavior_code": 0,
+    "manual_field_weights": {
+      "radial": 1.0,
+      "orbital": 1.0,
+      "vertical": 1.0,
+      "turbulence": 1.0,
+      "shell": 1.0
+    }
+  },
+  "auto_timing": {
+    "field_hold_ms": 30000,
+    "field_min_change_interval_ms": 45000,
+    "behavior_hold_ms": 30000,
+    "behavior_min_change_interval_ms": 45000,
+    "gate_hold_ms": 10000,
+    "gate_on_threshold": 6.0,
+    "gate_off_threshold": 4.0
+  },
+  "state_file_roles": {
+    "output/vcv_state.json": "source truth from canonical bridge, with field/behavior locked unless auto is enabled",
+    "output/manual_authority_mode.json": "operator authority mode and manual field/behavior values",
+    "output/effective_control_state.json": "canonical resolved report for HUD/diagnostics",
+    "output/control_state.json": "report-only compatibility snapshot, not authority",
+    "output/behavior_state.json": "legacy report/latch only, not renderer authority",
+    "output/dataset_coupling_state.json": "dataset proposal only unless dataset_coupling_mode is apply"
+  }
+}

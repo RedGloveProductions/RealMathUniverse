@@ -1,0 +1,19 @@
+{
+  "schema": "rmu.control_queue_schema.v1_8A",
+  "version": "v1.8A",
+  "database": "output/control_events.sqlite",
+  "event_recording": {
+    "dedupe_repeated_steps": true,
+    "min_record_interval_ms": 250
+  },
+  "queues": {
+    "behavior": {
+      "channel": "/ch/18",
+      "default_step_seconds": 30.0
+    },
+    "field": {
+      "channel": "/ch/8",
+      "default_step_seconds": 20.0
+    }
+  }
+}

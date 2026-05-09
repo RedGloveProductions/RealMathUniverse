@@ -44,8 +44,26 @@ start_bridge() {
 
 start_bridge "vcv_osc_bridge" scripts/run_vcv_osc_bridge.sh
 start_bridge "dataset_mode_bridge" scripts/run_dataset_mode_bridge.sh
-start_bridge "dataset_coupling_bridge" scripts/run_dataset_coupling_bridge.sh
-start_bridge "behavior_state_bridge" scripts/run_behavior_state_bridge.sh
+# RMU_V1_7I_OPTIONAL_LEGACY_BRIDGES
+if [[ "${RMU_ENABLE_DATASET_COUPLING_BRIDGE:-0}" == "1" ]]; then
+  # RMU_V1_7J_OPTIONAL_LEGACY_BRIDGES
+if [[ "${RMU_ENABLE_DATASET_COUPLING_BRIDGE:-0}" == "1" ]]; then
+  start_bridge "dataset_coupling_bridge" scripts/run_dataset_coupling_bridge.sh
+else
+  echo "Skipping dataset_coupling_bridge by default under v1.7J. Set RMU_ENABLE_DATASET_COUPLING_BRIDGE=1 to enable."
+fi
+else
+  echo "Skipping dataset_coupling_bridge by default under v1.7I manual authority. Set RMU_ENABLE_DATASET_COUPLING_BRIDGE=1 to enable."
+fi
+if [[ "${RMU_ENABLE_BEHAVIOR_STATE_BRIDGE:-0}" == "1" ]]; then
+  if [[ "${RMU_ENABLE_BEHAVIOR_STATE_BRIDGE:-0}" == "1" ]]; then
+  start_bridge "behavior_state_bridge" scripts/run_behavior_state_bridge.sh
+else
+  echo "Skipping behavior_state_bridge by default under v1.7J. Set RMU_ENABLE_BEHAVIOR_STATE_BRIDGE=1 to enable."
+fi
+else
+  echo "Skipping behavior_state_bridge by default under v1.7I manual authority. Set RMU_ENABLE_BEHAVIOR_STATE_BRIDGE=1 to enable."
+fi
 # v1.3F2: disabled. Static CSV seed is exported once before launch; renderer owns live particles.
 # start_bridge "geospatial_particle_bridge" scripts/run_geospatial_particle_bridge.sh
 

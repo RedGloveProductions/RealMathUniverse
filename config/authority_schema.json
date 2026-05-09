@@ -1,0 +1,150 @@
+{
+  "schema": "rmu.authority_schema.v1",
+  "version": "1.7A-authority-schema-foundation",
+  "description": "Formal authority schema for RealMathUniverse runtime resolution. Source files report raw truth. The resolver publishes effective truth.",
+  "project_rules": {
+    "one_layer_owns_each_decision": true,
+    "source_files_are_not_final_authority": true,
+    "hud_is_display_only": true,
+    "metal_consumes_effective_values": true,
+    "control_state_is_compatibility_snapshot": true
+  },
+  "files": {
+    "runtime_state": {
+      "path": "output/runtime_state.json",
+      "role": "runtime lifecycle and command authority",
+      "authority_level": 2
+    },
+    "vcv_state": {
+      "path": "output/vcv_state.json",
+      "role": "VCV source signal truth",
+      "authority_level": 1
+    },
+    "dataset_state": {
+      "path": "output/dataset_state.json",
+      "role": "dataset source/load truth",
+      "authority_level": 1
+    },
+    "dataset_coupling_state": {
+      "path": "output/dataset_coupling_state.json",
+      "role": "dataset-derived coupling proposal truth",
+      "authority_level": 1
+    },
+    "behavior_state": {
+      "path": "output/behavior_state.json",
+      "role": "manual behavior latch and compatibility behavior memory",
+      "authority_level": 1
+    },
+    "control_state": {
+      "path": "output/control_state.json",
+      "role": "legacy composite compatibility report, not final authority",
+      "authority_level": 5
+    },
+    "effective_state": {
+      "path": "output/effective_state.json",
+      "role": "canonical resolved runtime truth",
+      "authority_level": 5
+    }
+  },
+  "domains": {
+    "runtime_lifecycle": {
+      "default_authority": "renderer_runtime",
+      "fallback": "safe_paused"
+    },
+    "dataset_source": {
+      "default_authority": "dataset_loader",
+      "fallback": "synthetic_or_last_valid"
+    },
+    "particle_positions": {
+      "default_authority": "metal_gpu_live_buffer",
+      "fallback": "crab_nav_csv_seed"
+    },
+    "species_identity": {
+      "default_authority": "species_identity_sidecar",
+      "fallback": "crab_default"
+    },
+    "behavior": {
+      "default_authority": "manual",
+      "external_authority": "vcv",
+      "vcv_code_channel": "/ch/18",
+      "vcv_gate_channel": "/ch/19",
+      "vcv_gate_threshold_volts": 5.0,
+      "fallback": "manual"
+    },
+    "field_recipe": {
+      "default_authority": "manual_or_internal",
+      "external_authority": "vcv",
+      "vcv_scene_channel": "/ch/8",
+      "fallback": "last_valid_or_default"
+    },
+    "gravity": {
+      "default_authority": "internal",
+      "external_authority": "vcv",
+      "vcv_position_channel": "/ch/14",
+      "vcv_strength_channel": "/ch/15",
+      "fallback": "internal"
+    },
+    "species_mass": {
+      "default_authority": "species_defaults",
+      "external_authority": "vcv_poly_bank",
+      "bank_a_channel": "/ch/10",
+      "bank_b_channel": "/ch/11",
+      "species_count": 22,
+      "bank_a_count": 16,
+      "bank_b_count": 6,
+      "fallback": "species_defaults"
+    },
+    "camera": {
+      "default_authority": "keyboard_mouse",
+      "fallback": "preset_camera"
+    },
+    "capture": {
+      "default_authority": "renderer",
+      "fallback": "disabled"
+    }
+  },
+  "behavior_codes": {
+    "0": "none",
+    "1": "stable_orbit",
+    "2": "radial_field",
+    "3": "orbital_field",
+    "4": "turbulence_field",
+    "5": "black_hole_capture",
+    "6": "shell_boundary",
+    "7": "species_controlled"
+  },
+  "field_recipes": {
+    "0": {
+      "name": "manual_or_default",
+      "weights": [1.0, 1.0, 1.0, 1.0, 1.0]
+    },
+    "1": {
+      "name": "radial_focus",
+      "weights": [2.5, 0.25, 0.25, 0.25, 0.5]
+    },
+    "2": {
+      "name": "orbital_focus",
+      "weights": [0.25, 2.5, 0.25, 0.5, 0.5]
+    },
+    "3": {
+      "name": "vertical_focus",
+      "weights": [0.25, 0.25, 2.5, 0.5, 0.5]
+    },
+    "4": {
+      "name": "turbulence_focus",
+      "weights": [0.5, 0.75, 0.25, 2.5, 0.75]
+    },
+    "5": {
+      "name": "shell_focus",
+      "weights": [0.5, 0.75, 0.25, 0.75, 2.5]
+    },
+    "6": {
+      "name": "full_hybrid",
+      "weights": [1.5, 1.5, 1.0, 1.25, 1.25]
+    },
+    "7": {
+      "name": "species_driven",
+      "weights": [1.0, 1.0, 0.5, 1.75, 1.25]
+    }
+  }
+}

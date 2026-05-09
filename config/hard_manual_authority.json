@@ -1,0 +1,29 @@
+{
+  "schema": "rmu.hard_manual_authority.v1",
+  "version": "v1.7F-hard-manual-authority-guard",
+  "default_mode": {
+    "auto_fields_enabled": false,
+    "auto_behavior_enabled": false,
+    "auto_camera_enabled": false
+  },
+  "manual_defaults": {
+    "scene_index": 0,
+    "behavior_code": 0,
+    "field_weights": {
+      "radial": 1.0,
+      "orbital": 1.0,
+      "vertical": 1.0,
+      "turbulence": 1.0,
+      "shell": 1.0
+    }
+  },
+  "auto_timing": {
+    "field_hold_ms": 30000,
+    "field_min_change_interval_ms": 45000,
+    "behavior_hold_ms": 30000,
+    "behavior_min_change_interval_ms": 45000,
+    "gate_hold_ms": 10000,
+    "gate_on_threshold": 6.0,
+    "gate_off_threshold": 4.0
+  }
+}

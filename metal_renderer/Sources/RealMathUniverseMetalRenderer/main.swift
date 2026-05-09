@@ -8,6 +8,8 @@ import MetalKit
 import simd
 
 
+
+
 // RMU v1.3A1 geospatial runtime globals
 // These are renderer-level runtime latches used by the geospatial crab-field startup path.
 // They are file-scope on purpose so older renderer methods and extension-style patches can share the same state.
@@ -1696,6 +1698,174 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
     }
 
 
+    // RMU_V1_7I_RENDERER_MANUAL_AUTHORITY_HELPERS_BEGIN
+    func rmuV17IManualAuthorityModeObject() -> [String: Any] {
+        let url = URL(fileURLWithPath: projectRoot).appendingPathComponent("output").appendingPathComponent("manual_authority_mode.json")
+        guard let data = try? Data(contentsOf: url), let json = try? JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] else {
+            return ["auto_fields_enabled": false, "auto_behavior_enabled": false, "auto_camera_enabled": false, "manual_scene_index": 0, "manual_behavior_code": 0, "manual_field_weights": ["radial": 1.0, "orbital": 1.0, "vertical": 1.0, "turbulence": 1.0, "shell": 1.0]]
+        }
+        return json
+    }
+    func rmuV17IBool(_ obj: [String: Any], _ key: String, _ fallback: Bool) -> Bool {
+        if let b = obj[key] as? Bool { return b }
+        if let n = obj[key] as? NSNumber { return n.boolValue }
+        if let s = obj[key] as? String {
+            let lowered = s.lowercased()
+            if ["true", "1", "yes", "on", "auto"].contains(lowered) { return true }
+            if ["false", "0", "no", "off", "manual"].contains(lowered) { return false }
+        }
+        return fallback
+    }
+    func rmuV17IFloat(_ value: Any?, _ fallback: Float) -> Float {
+        if let n = value as? NSNumber { return n.floatValue }
+        if let d = value as? Double { return Float(d) }
+        if let f = value as? Float { return f }
+        if let i = value as? Int { return Float(i) }
+        if let s = value as? String, let d = Double(s) { return Float(d) }
+        return fallback
+    }
+    func rmuV17IInt(_ value: Any?, _ fallback: Int) -> Int {
+        if let n = value as? NSNumber { return n.intValue }
+        if let i = value as? Int { return i }
+        if let d = value as? Double { return Int(d.rounded()) }
+        if let s = value as? String, let d = Double(s) { return Int(d.rounded()) }
+        return fallback
+    }
+    func rmuV17IAutoFieldsEnabled() -> Bool { rmuV17IBool(rmuV17IManualAuthorityModeObject(), "auto_fields_enabled", false) }
+    func rmuV17IAutoBehaviorEnabled() -> Bool { rmuV17IBool(rmuV17IManualAuthorityModeObject(), "auto_behavior_enabled", false) }
+    func rmuV17IAutoCameraEnabled() -> Bool { rmuV17IBool(rmuV17IManualAuthorityModeObject(), "auto_camera_enabled", false) }
+    func rmuV17IManualSceneIndex(_ mode: [String: Any]) -> Int { max(0, min(7, rmuV17IInt(mode["manual_scene_index"], 0))) }
+    func rmuV17IManualBehaviorCode(_ mode: [String: Any]) -> Int32 { Int32(max(0, min(7, rmuV17IInt(mode["manual_behavior_code"], 0)))) }
+    func rmuV17IManualFieldWeights(_ mode: [String: Any]) -> [Float] {
+        guard let w = mode["manual_field_weights"] as? [String: Any] else { return [1.0, 1.0, 1.0, 1.0, 1.0] }
+        return [rmuV17IFloat(w["radial"], 1.0), rmuV17IFloat(w["orbital"], 1.0), rmuV17IFloat(w["vertical"], 1.0), rmuV17IFloat(w["turbulence"], 1.0), rmuV17IFloat(w["shell"], 1.0)]
+    }
+    func rmuV17IEnforceRendererManualAuthority(reason: String = "unspecified") {
+        let mode = rmuV17IManualAuthorityModeObject()
+        let autoFields = rmuV17IBool(mode, "auto_fields_enabled", false)
+        let autoBehavior = rmuV17IBool(mode, "auto_behavior_enabled", false)
+        let autoCamera = rmuV17IBool(mode, "auto_camera_enabled", false)
+        if !autoFields {
+            let weights = rmuV17IManualFieldWeights(mode)
+            fieldLayerWeights = Array(weights.prefix(5))
+            fieldLayerEnabled = fieldLayerWeights.map { $0 > 0.0 }
+            let scene = rmuV17IManualSceneIndex(mode)
+            vcvSceneIndex = scene
+            vcvAuthoritySceneIndex = scene
+            selectedFieldLayerIndex = max(0, min(max(0, fieldLayerWeights.count - 1), scene == 0 ? 0 : scene - 1))
+            fieldLayersEnabled = true
+            dataCouplingStatus = "manual lock: dataset coupling not applying fields"
+            lastVisualStateMessage = "v1.7I manual field authority"
+        }
+        if !autoBehavior {
+            let code = rmuV17IManualBehaviorCode(mode)
+            behaviorEffectCode = code
+            rmuV16DBehaviorAuthorityActive = false
+            rmuV16DBehaviorAuthorityCode = code
+            rmuV16DBehaviorAuthorityGate = 0.0
+        }
+        if !autoCamera { autoCameraEnabled = false }
+        _ = reason
+    }
+    // RMU_V1_7I_RENDERER_MANUAL_AUTHORITY_HELPERS_END
+
+    // RMU_V1_7J_CONTROL_SCHEMA_HELPERS_BEGIN
+    func rmuV17JControlModeObject() -> [String: Any] {
+        let url = URL(fileURLWithPath: projectRoot).appendingPathComponent("output").appendingPathComponent("manual_authority_mode.json")
+        guard let data = try? Data(contentsOf: url), let json = try? JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] else {
+            return ["auto_fields_enabled": false, "auto_behavior_enabled": false, "auto_camera_enabled": false, "linked_behavior_presets_enabled": false, "linked_scene_presets_enabled": false, "dataset_coupling_mode": "observe", "manual_scene_index": 0, "manual_behavior_code": 0, "manual_field_weights": ["radial": 1.0, "orbital": 1.0, "vertical": 1.0, "turbulence": 1.0, "shell": 1.0]]
+        }
+        return json
+    }
+    func rmuV17JBool(_ obj: [String: Any], _ key: String, _ fallback: Bool) -> Bool {
+        if let b = obj[key] as? Bool { return b }
+        if let n = obj[key] as? NSNumber { return n.boolValue }
+        if let s = obj[key] as? String { let v=s.lowercased(); if ["true","1","yes","on","auto","apply"].contains(v) { return true }; if ["false","0","no","off","manual","observe"].contains(v) { return false } }
+        return fallback
+    }
+    func rmuV17JFloat(_ value: Any?, _ fallback: Float) -> Float {
+        if let n = value as? NSNumber { return n.floatValue }; if let d = value as? Double { return Float(d) }; if let f = value as? Float { return f }; if let i = value as? Int { return Float(i) }; if let s = value as? String, let d = Double(s) { return Float(d) }; return fallback
+    }
+    func rmuV17JInt(_ value: Any?, _ fallback: Int) -> Int { Int(rmuV17JFloat(value, Float(fallback)).rounded()) }
+    func rmuV17JAutoFieldsEnabled() -> Bool { rmuV17JBool(rmuV17JControlModeObject(), "auto_fields_enabled", false) }
+    func rmuV17JAutoBehaviorEnabled() -> Bool { rmuV17JBool(rmuV17JControlModeObject(), "auto_behavior_enabled", false) }
+    func rmuV17JAutoCameraEnabled() -> Bool { rmuV17JBool(rmuV17JControlModeObject(), "auto_camera_enabled", false) }
+    func rmuV17JLinkedBehaviorPresetsEnabled() -> Bool { rmuV17JBool(rmuV17JControlModeObject(), "linked_behavior_presets_enabled", false) }
+    func rmuV17JDatasetCouplingApplyEnabled() -> Bool { (rmuV17JControlModeObject()["dataset_coupling_mode"] as? String ?? "observe").lowercased() == "apply" }
+    func rmuV17JManualFieldWeights(_ mode: [String: Any]) -> [Float] {
+        let w = mode["manual_field_weights"] as? [String: Any] ?? [:]
+        return [rmuV17JFloat(w["radial"],1.0), rmuV17JFloat(w["orbital"],1.0), rmuV17JFloat(w["vertical"],1.0), rmuV17JFloat(w["turbulence"],1.0), rmuV17JFloat(w["shell"],1.0)]
+    }
+    func rmuV17JCanonicalChannelNumber(_ json: [String: Any], _ path: String, _ label: String? = nil) -> Float? {
+        func extract(_ any: Any?) -> Float? {
+            if let n = any as? NSNumber { return n.floatValue }
+            if let d = any as? Double { return Float(d) }
+            if let f = any as? Float { return f }
+            if let i = any as? Int { return Float(i) }
+            if let s = any as? String, let d = Double(s) { return Float(d) }
+            if let arr = any as? [Any], let first = arr.first { return extract(first) }
+            if let dict = any as? [String: Any] {
+                for k in ["stable", "value", "mapped", "raw"] { if let v = extract(dict[k]) { return v } }
+                if let voices = dict["voices"] as? [Any], let first = voices.first { return extract(first) }
+            }
+            return nil
+        }
+        for containerName in ["channels", "direct_channels", "native_channel_values", "raw_channels"] {
+            if let c = json[containerName] as? [String: Any], let v = extract(c[path]) { return v }
+        }
+        if let label = label {
+            if let mapped = json["mapped_values"] as? [String: Any], let v = extract(mapped[label]) { return v }
+            if let v = extract(json[label]) { return v }
+        }
+        return nil
+    }
+    func rmuV17JCanonicalVoiceCount(_ json: [String: Any], _ path: String) -> Int {
+        if let counts = json["channel_voice_counts"] as? [String: Any], let n = counts[path] as? NSNumber { return n.intValue }
+        for containerName in ["channels", "direct_channels"] {
+            if let c = json[containerName] as? [String: Any], let entry = c[path] as? [String: Any] {
+                if let n = entry["voice_count"] as? NSNumber { return n.intValue }
+                if let voices = entry["voices"] as? [Any] { return voices.count }
+                if entry["value"] != nil || entry["mapped"] != nil || entry["raw"] != nil { return 1 }
+            } else if let c = json[containerName] as? [String: Any], c[path] != nil { return 1 }
+        }
+        return 0
+    }
+    func rmuV17JPublishEffectiveControlState(reason: String) {
+        // RMU_V1_8B_RENDERER_DEBUG_ONLY: do not write canonical effective_control_state.json here.
+        let mode = rmuV17JControlModeObject()
+        let weights = rmuV17JManualFieldWeights(mode)
+        let obj: [String: Any] = ["schema": "rmu.renderer_effective_debug_state.v1_8B", "version": "v1.8B-renderer-debug-only", "updated_by": "MetalRenderer.rmuV18BRendererDebugState", "reason": reason, "timestamp_unix": Date().timeIntervalSince1970, "authority": ["field_weights": rmuV17JAutoFieldsEnabled() ? "auto" : "manual", "field_recipe": rmuV17JAutoFieldsEnabled() ? "auto" : "manual", "behavior": rmuV17JAutoBehaviorEnabled() ? "auto" : "manual", "camera": rmuV17JAutoCameraEnabled() ? "auto" : "manual", "dataset_coupling": (mode["dataset_coupling_mode"] as? String ?? "observe")], "effective": ["scene_index": rmuV17JInt(mode["manual_scene_index"], 0), "behavior_code": Int(behaviorEffectCode), "behavior_authority_gate": rmuV16DBehaviorAuthorityGate, "field_weights": ["radial": weights[0], "orbital": weights[1], "vertical": weights[2], "turbulence": weights[3], "shell": weights[4]]]]
+        let url = URL(fileURLWithPath: projectRoot).appendingPathComponent("output").appendingPathComponent("renderer_effective_debug_state.json")
+        if let data = try? JSONSerialization.data(withJSONObject: obj, options: [.prettyPrinted]) { try? data.write(to: url) }
+    }
+    func rmuV17JEnforceControlAuthority(reason: String = "unspecified") {
+        let mode = rmuV17JControlModeObject()
+        if !rmuV17JAutoFieldsEnabled() {
+            let weights = rmuV17JManualFieldWeights(mode)
+            fieldLayerWeights = Array(weights.prefix(5))
+            fieldLayerEnabled = fieldLayerWeights.map { $0 > 0.0 }
+            fieldLayersEnabled = true
+            let scene = max(0, min(7, rmuV17JInt(mode["manual_scene_index"], 0)))
+            vcvSceneIndex = scene; vcvAuthoritySceneIndex = scene
+            selectedFieldLayerIndex = max(0, min(max(0, fieldLayerWeights.count - 1), scene == 0 ? 0 : scene - 1))
+            vcvFieldControlEnabled = false
+            dataCouplingEnabled = false
+            dataCouplingStatus = "observe/manual locked"
+            lastVisualStateMessage = "v1.7J manual field authority"
+        }
+        if !rmuV17JAutoBehaviorEnabled() {
+            let code = Int32(max(0, min(7, rmuV17JInt(mode["manual_behavior_code"], 0))))
+            behaviorEffectCode = code
+            geospatialBehaviorEnabled = code != 0
+            rmuV16DBehaviorAuthorityActive = false
+            rmuV16DBehaviorAuthorityCode = code
+            rmuV16DBehaviorAuthorityGate = 0.0
+        }
+        if !rmuV17JAutoCameraEnabled() { autoCameraEnabled = false }
+        rmuV17JPublishEffectiveControlState(reason: reason)
+    }
+    // RMU_V1_7J_CONTROL_SCHEMA_HELPERS_END
+
     // RMU_V1_6F_PRE_ENCODE_VCV_AUTHORITY_BEGIN
     func rmuV16FApplyLiveVCVDirectAuthorityFromDisk() {
         let url = URL(fileURLWithPath: projectRoot)
@@ -1708,32 +1878,11 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
         }
 
         func rmuV16FNumberForChannel(_ path: String) -> Float? {
-            if let channels = json["channels"] as? [String: Any],
-               let number = channels[path] as? NSNumber {
-                return number.floatValue
-            }
-            if let nativeValues = json["native_channel_values"] as? [String: Any],
-               let number = nativeValues[path] as? NSNumber {
-                return number.floatValue
-            }
-            if let rawChannels = json["raw_channels"] as? [String: Any],
-               let rawList = rawChannels[path] as? [Any],
-               let first = rawList.first as? NSNumber {
-                return first.floatValue
-            }
-            return nil
+            return rmuV17JCanonicalChannelNumber(json, path, nil)
         }
 
         func rmuV16FVoiceCountForChannel(_ path: String) -> Int {
-            if let counts = json["channel_voice_counts"] as? [String: Any],
-               let number = counts[path] as? NSNumber {
-                return number.intValue
-            }
-            if let nativeCounts = json["native_channel_voice_counts"] as? [String: Any],
-               let number = nativeCounts[path] as? NSNumber {
-                return number.intValue
-            }
-            return 0
+            return rmuV17JCanonicalVoiceCount(json, path)
         }
 
         // /ch/8 = scene / field layer authority.
@@ -1797,6 +1946,8 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
             rmuV16DBehaviorAuthorityActive = false
             rmuV16DBehaviorAuthorityGate = gateValue
         }
+        // RMU_V1_7I_DIRECT_AUTHORITY_FINAL_OVERRIDE
+        rmuV17IEnforceRendererManualAuthority(reason: "after_vcv_direct_authority")
     }
     // RMU_V1_6F_PRE_ENCODE_VCV_AUTHORITY_END
 
@@ -1985,8 +2136,11 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
         lateFrameWarning = currentFrameTimeMS > 20.0 || currentFPS < 54.0
 
         loadVCVStateIfNeeded()
+        // RMU_V1_7J_AFTER_LOAD_VCV_ENFORCE
+        rmuV17JEnforceControlAuthority(reason: "after_load_vcv")
         loadDatasetCouplingIfNeeded()
-        updateAutoCamera()
+        // RMU_V1_7I_CAMERA_MANUAL_GUARD_CALL
+        if rmuV17IAutoCameraEnabled() { updateAutoCamera() }
         if geospatialSimulationPaused == 0 {
             fieldPhase += 0.035
         }
@@ -2013,6 +2167,8 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
         var om = overlayMode
         // RMU_V1_6F_RENDER_PRE_DRAW_AUTHORITY_CALL
         rmuV16FApplyLiveVCVDirectAuthorityFromDisk()
+        // RMU_V1_7I_RENDER_PRE_DRAW_FINAL_MANUAL_OVERRIDE
+        rmuV17IEnforceRendererManualAuthority(reason: "render_pre_draw")
 
         var fle = fieldLayersEnabled ? Int32(1) : Int32(0)
         var weightsA = SIMD4<Float>(
@@ -3033,6 +3189,18 @@ if let probabilityNumber = (json["probability_value"] as? NSNumber) ?? (json["pr
             dataCouplingTargets = targets.map { clampDataWeight(Float($0.doubleValue)) }
         }
 
+        // RMU_V1_7I_DATASET_COUPLING_MANUAL_GUARD
+        if !rmuV17IAutoFieldsEnabled() {
+            dataCouplingStatus = "manual locked"
+            dataCouplingSummary = "manual field authority active; dataset coupling read but not applied"
+            return
+        }
+        // RMU_V1_7J_DATASET_COUPLING_APPLY_GUARD
+        if !rmuV17JDatasetCouplingApplyEnabled() || !rmuV17JAutoFieldsEnabled() {
+            dataCouplingStatus = "observe/manual locked"
+            dataCouplingSummary = "dataset coupling observed but not applied under v1.7J"
+            return
+        }
         if dataCouplingEnabled && dataCouplingLoaded && !dataCouplingFallbackActive {
             applyDatasetCouplingTargets()
         }
@@ -3299,6 +3467,7 @@ final class KeyCatcherWindow: NSWindow {
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { true }
     override func keyDown(with event: NSEvent) {
+
         if let delegate = NSApp.delegate as? AppDelegate {
             delegate.handleKey(event)
         } else {
@@ -3451,6 +3620,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
 
     func handleKey(_ event: NSEvent) {
+        // RMU_V1_8A_HANDLEKEY_OVERRIDE
+        if rmuV18AHandleKey(event) { return }
         if event.keyCode == 53 {
             NSApplication.shared.terminate(nil)
             return
@@ -3710,6 +3881,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if FileManager.default.fileExists(atPath: url.path) { return }
         try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
         writeJSON([
+            "role": "report_only_not_authority",
+            "not_authority": true,
             "behavior_mode": currentBehaviorMode,
             "behavior_source": behaviorSource,
             "behavior_lock": behaviorLock,
@@ -3985,7 +4158,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
 
     func writePreset(behavior: String, respawn: Bool, pointSize: Float, radiusMultiplier: Float, colorMode: Int32) {
-        // RMU_V1_3D2_WRITEPRESET_BEHAVIOR_EFFECT
+        // RMU_V1_7J_WRITEPRESET_DECOUPLED
         currentBehaviorMode = behavior
         currentRespawn = respawn
         renderer?.geospatialRespawnOnCapture = respawn
@@ -3994,14 +4167,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         simulationPaused = readRuntimePausedFromFile()
         renderer?.geospatialSimulationPaused = simulationPaused ? 1 : 0
         writeRuntimeState(source: "behavior_preset")
-        renderer?.pointSize = pointSize
-        renderer?.setColor(colorMode)
-        if let base = renderer?.frameLoader.worldRadius {
-            renderer?.manualWorldRadius = base * radiusMultiplier
+        if renderer?.rmuV17JLinkedBehaviorPresetsEnabled() ?? false {
+            renderer?.pointSize = pointSize
+            renderer?.setColor(colorMode)
+            if let base = renderer?.frameLoader.worldRadius {
+                renderer?.manualWorldRadius = base * radiusMultiplier
+            }
+            applyFieldRecipeForBehavior(behavior)
+        } else {
+            renderer?.lastVisualStateMessage = "v1.7J behavior-only preset; linked field/camera/color disabled"
         }
-        applyFieldRecipeForBehavior(behavior)
         writeBehaviorState(behavior: behavior, source: "renderer_manual")
         writeControlState(behavior: behavior)
+        renderer?.rmuV17JEnforceControlAuthority(reason: "after_writePreset")
     }
 
     func applyFieldRecipeForBehavior(_ behavior: String) {
@@ -4100,17 +4278,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             behaviorSource = "renderer_manual"
             // v1.3D7: control-state behavior selection should not hard-lock runtime behavior.
             behaviorLock = false
-        } else if let behaviorState = readBehaviorStateForControl(),
-                  let existingBehavior = behaviorState["behavior_mode"] as? String,
-                  !existingBehavior.isEmpty {
-            currentBehaviorMode = existingBehavior
-            behaviorSource = behaviorState["behavior_source"] as? String ?? behaviorSource
-            behaviorLock = behaviorState["behavior_lock"] as? Bool ?? behaviorLock
-        } else if let existingBehavior = state["behavior_mode"] as? String,
-                  !existingBehavior.isEmpty {
-            currentBehaviorMode = existingBehavior
+        } else {
+            // RMU_V1_7J_CONTROL_STATE_REPORT_ONLY
+            // control_state.json and behavior_state.json are reports/latches only here.
+            // They must not resurrect stale behavior into renderer authority.
         }
 
+        state["role"] = "report_only_not_authority"
+        state["not_authority"] = true
         state["behavior_mode"] = currentBehaviorMode
         state["behavior_source"] = behaviorSource
         state["behavior_lock"] = behaviorLock
@@ -4499,6 +4674,80 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         hud?.updateText()
     }
 }
+
+
+// RMU_V1_8A_OPERATOR_AUTHORITY_EXTENSION_BEGIN
+extension AppDelegate {
+    func rmuV18AOperatorURL() -> URL { URL(fileURLWithPath: projectRoot).appendingPathComponent("output").appendingPathComponent("operator_authority_state.json") }
+    func rmuV18AReadOperatorState() -> [String: Any] {
+        let url = rmuV18AOperatorURL()
+        guard let data = try? Data(contentsOf: url), let obj = try? JSONSerialization.jsonObject(with: data, options: []), let json = obj as? [String: Any] else { return [:] }
+        return json
+    }
+    func rmuV18AWriteOperatorState(_ patch: [String: Any], reason: String) {
+        var state = rmuV18AReadOperatorState(); state["schema"] = "rmu.operator_authority_state.v1_8A"; state["version"] = "v1.8A"; state["updated_by"] = "swift_hotkey_v1_8A"; state["last_hotkey_reason"] = reason; state["updated_unix"] = Date().timeIntervalSince1970
+        for (k, v) in patch { state[k] = v }
+        let url = rmuV18AOperatorURL(); try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true); writeJSON(state, to: url); print("RMU v1.8A operator hotkey: \(reason)"); hud?.updateText()
+    }
+    func rmuV18AWeights() -> [String: Double] { let s = rmuV18AReadOperatorState(); return s["manual_field_weights"] as? [String: Double] ?? ["radial": 1.0, "orbital": 1.0, "vertical": 1.0, "turbulence": 1.0, "shell": 1.0] }
+    func rmuV18ASetBehavior(_ code: Int) { let c = max(0, min(7, code)); var patch: [String: Any] = ["manual_behavior_code": c, "auto_behavior_enabled": false, "no_behavior_enabled": c == 0]; if c != 0 { patch["last_manual_behavior_code"] = c }; rmuV18AWriteOperatorState(patch, reason: "manual_behavior_\(c)") }
+    func rmuV18AToggleNoBehavior() { let s = rmuV18AReadOperatorState(); let off = s["no_behavior_enabled"] as? Bool ?? false; if off { let last = s["last_manual_behavior_code"] as? Int ?? 1; rmuV18AWriteOperatorState(["no_behavior_enabled": false, "manual_behavior_code": max(1,last), "auto_behavior_enabled": false], reason: "restore_behavior") } else { let cur = s["manual_behavior_code"] as? Int ?? 0; rmuV18AWriteOperatorState(["no_behavior_enabled": true, "manual_behavior_code": 0, "last_manual_behavior_code": cur == 0 ? (s["last_manual_behavior_code"] as? Int ?? 1) : cur, "auto_behavior_enabled": false], reason: "no_behavior") } }
+    func rmuV18AToggleAuto() { let s = rmuV18AReadOperatorState(); let on = !((s["auto_fields_enabled"] as? Bool ?? false) || (s["auto_behavior_enabled"] as? Bool ?? false)); rmuV18AWriteOperatorState(["auto_fields_enabled": on, "auto_behavior_enabled": on, "no_behavior_enabled": on ? false : (s["no_behavior_enabled"] as? Bool ?? false), "queues_paused": false], reason: on ? "auto_on" : "auto_off") }
+    func rmuV18AFullManual() { rmuV18AWriteOperatorState(["auto_fields_enabled": false, "auto_behavior_enabled": false, "auto_camera_enabled": false, "queues_paused": true, "dataset_coupling_mode": "observe"], reason: "full_manual") }
+    func rmuV18AEmergencyManual() { rmuV18AWriteOperatorState(["auto_fields_enabled": false, "auto_behavior_enabled": false, "auto_camera_enabled": false, "no_behavior_enabled": true, "manual_behavior_code": 0, "queues_paused": true, "dataset_coupling_mode": "observe"], reason: "emergency_manual") }
+    func rmuV18AToggleBehaviorQueue() { let s = rmuV18AReadOperatorState(); let on = !(s["auto_behavior_enabled"] as? Bool ?? false); rmuV18AWriteOperatorState(["auto_behavior_enabled": on, "no_behavior_enabled": on ? false : (s["no_behavior_enabled"] as? Bool ?? false)], reason: on ? "behavior_queue_on" : "behavior_queue_off") }
+    func rmuV18AToggleFieldQueue() { let s = rmuV18AReadOperatorState(); let on = !(s["auto_fields_enabled"] as? Bool ?? false); rmuV18AWriteOperatorState(["auto_fields_enabled": on], reason: on ? "field_queue_on" : "field_queue_off") }
+    func rmuV18ACycleAutoDomain() { let s = rmuV18AReadOperatorState(); let cur = s["active_auto_domain"] as? String ?? "behavior"; let next = cur == "behavior" ? "field" : (cur == "field" ? "all" : "behavior"); rmuV18AWriteOperatorState(["active_auto_domain": next], reason: "active_auto_domain_\(next)") }
+    func rmuV18AAdjustAutoSpeed(delta: Double) { let s = rmuV18AReadOperatorState(); let dom = s["active_auto_domain"] as? String ?? "behavior"; var p: [String: Any] = [:]; if dom == "behavior" || dom == "all" { p["behavior_step_seconds"] = max(5.0, min(300.0, (s["behavior_step_seconds"] as? Double ?? 30.0) + delta)) }; if dom == "field" || dom == "all" { p["field_step_seconds"] = max(5.0, min(300.0, (s["field_step_seconds"] as? Double ?? 20.0) + delta)) }; rmuV18AWriteOperatorState(p, reason: "auto_speed_adjust") }
+    func rmuV18AQueueStep(domain: String, delta: Int) { rmuV18AWriteOperatorState(["command": ["action": "queue_step", "domain": domain, "delta": delta, "id": UUID().uuidString]], reason: "queue_step_\(domain)_\(delta)") }
+    func rmuV18AAdjustFieldWeight(delta: Double) { let s = rmuV18AReadOperatorState(); let layer = s["selected_field_layer"] as? String ?? "radial"; var weights = rmuV18AWeights(); weights[layer] = max(0.0, min(10.0, (weights[layer] ?? 1.0) + delta)); rmuV18AWriteOperatorState(["manual_field_weights": weights, "auto_fields_enabled": false], reason: "field_weight_\(layer)") }
+    func rmuV18ACycleSelectedFieldLayer() { let order = ["radial", "orbital", "vertical", "turbulence", "shell"]; let s = rmuV18AReadOperatorState(); let cur = s["selected_field_layer"] as? String ?? "radial"; let idx = order.firstIndex(of: cur) ?? 0; let next = order[(idx + 1) % order.count]; rmuV18AWriteOperatorState(["selected_field_layer": next], reason: "selected_field_layer_\(next)") }
+    func rmuV18AToggleDatasetMode() { let modes = ["off", "observe", "propose", "apply"]; let s = rmuV18AReadOperatorState(); let cur = s["dataset_coupling_mode"] as? String ?? "observe"; let idx = modes.firstIndex(of: cur) ?? 1; let next = modes[(idx + 1) % modes.count]; rmuV18AWriteOperatorState(["dataset_coupling_mode": next], reason: "dataset_mode_\(next)") }
+    func rmuV18AHandleKey(_ event: NSEvent) -> Bool {
+        let shift = event.modifierFlags.contains(.shift); let control = event.modifierFlags.contains(.control); let chars = event.charactersIgnoringModifiers?.lowercased() ?? ""; let panStep: Float = 0.035; let rotStep: Float = 4.0 * .pi / 180.0
+        if event.keyCode == 53 { rmuV18AEmergencyManual(); return true }
+        if event.keyCode == 49 { toggleSimulationPause(); return true }
+        if event.keyCode == 48 { rmuV18ACycleAutoDomain(); return true }
+        switch event.keyCode { case 123: renderer?.pan(dx: -panStep, dy: 0); return true; case 124: renderer?.pan(dx: panStep, dy: 0); return true; case 125: renderer?.pan(dx: 0, dy: -panStep); return true; case 126: renderer?.pan(dx: 0, dy: panStep); return true; default: break }
+        if control && ["1","2","3","4"].contains(chars) { switch chars { case "1": loadCameraPreset("gallery_orbit"); case "2": loadCameraPreset("macro_disk"); case "3": loadCameraPreset("wide_system"); case "4": loadCameraPreset("default_camera"); default: break }; return true }
+        if chars.count == 1, let n = Int(chars), n >= 0 && n <= 7 { rmuV18ASetBehavior(n); return true }
+        if shift && chars == "e" { rmuV18AToggleNoBehavior(); return true }
+        if chars == "m" { rmuV18AFullManual(); return true }
+        if chars == "a" { rmuV18AToggleAuto(); return true }
+        if chars == "n" { rmuV18AToggleNoBehavior(); return true }
+        if chars == "b" { rmuV18AToggleBehaviorQueue(); return true }
+        if shift && chars == "b" { rmuV18AWriteOperatorState(["command": ["action": "clear_queues", "id": UUID().uuidString]], reason: "clear_behavior_queue"); return true }
+        if chars == "f" { rmuV18AToggleFieldQueue(); return true }
+        if shift && chars == "f" { rmuV18AWriteOperatorState(["auto_fields_enabled": false], reason: "force_field_manual"); return true }
+        if chars == "v" { rmuV18ACycleSelectedFieldLayer(); return true }
+        if chars == "[" { rmuV18AQueueStep(domain: "field", delta: -1); return true }
+        if chars == "]" { rmuV18AQueueStep(domain: "field", delta: 1); return true }
+        if chars == "." { rmuV18AQueueStep(domain: rmuV18AReadOperatorState()["active_auto_domain"] as? String ?? "behavior", delta: 1); return true }
+        if chars == "," { rmuV18AQueueStep(domain: rmuV18AReadOperatorState()["active_auto_domain"] as? String ?? "behavior", delta: -1); return true }
+        if shift && (chars == "-" || chars == "_") { rmuV18AAdjustAutoSpeed(delta: 5.0); return true }
+        if shift && (chars == "=" || chars == "+") { rmuV18AAdjustAutoSpeed(delta: -5.0); return true }
+        if shift && chars == "0" { rmuV18AWriteOperatorState(["behavior_step_seconds": 30.0, "field_step_seconds": 20.0], reason: "reset_auto_speed"); return true }
+        if chars == "-" { rmuV18AAdjustFieldWeight(delta: -0.05); return true }
+        if chars == "=" { rmuV18AAdjustFieldWeight(delta: 0.05); return true }
+        if chars == "p" { let s = rmuV18AReadOperatorState(); rmuV18AWriteOperatorState(["queues_paused": !(s["queues_paused"] as? Bool ?? false)], reason: "toggle_queues_paused"); return true }
+        if chars == "d" { if shift { rmuV18AWriteOperatorState(["dataset_coupling_mode": "observe"], reason: "dataset_observe") } else { rmuV18AToggleDatasetMode() }; return true }
+        if chars == "g" { rmuV18AWriteOperatorState(["dataset_gain_adjust_request": shift ? "down" : "up"], reason: "dataset_gain_request"); return true }
+        if chars == "o" { let s = rmuV18AReadOperatorState(); rmuV18AWriteOperatorState(["vcv_event_recording_enabled": !(s["vcv_event_recording_enabled"] as? Bool ?? true)], reason: "toggle_vcv_event_recording"); return true }
+        if shift && chars == "o" { rmuV18AWriteOperatorState(["command": ["action": "clear_queues", "id": UUID().uuidString]], reason: "clear_all_queues"); return true }
+        if chars == "h" { if shift { hud?.toggleBottomPanelMode() } else { hud?.toggleAll() }; hud?.updateText(); return true }
+        if chars == "u" { hud?.toggleBottomPanelMode(); return true }
+        if chars == "k" { if control { captureBurst(clean: false, total: burstCount, interval: burstInterval) } else { saveWindowScreenshot(clean: shift) }; return true }
+        if chars == "r" { renderer?.resetGeospatialParticleState(); if shift { writeRuntimeState(source: "v1_8A_shift_r_reset") }; return true }
+        if chars == "c" { if shift { rmuV18AWriteOperatorState(["auto_camera_enabled": !(rmuV18AReadOperatorState()["auto_camera_enabled"] as? Bool ?? false)], reason: "toggle_auto_camera") } else { renderer?.resetCamera() }; return true }
+        if chars == "w" { renderer?.zoomIn(); return true }
+        if chars == "s" { renderer?.zoomOut(); return true }
+        if chars == "a" { renderer?.rotate(delta: -rotStep); return true }
+        if chars == "d" { renderer?.rotate(delta: rotStep); return true }
+        if chars == "q" { NSApplication.shared.terminate(nil); return true }
+        return true
+    }
+}
+// RMU_V1_8A_OPERATOR_AUTHORITY_EXTENSION_END
 
 let app = NSApplication.shared
 let delegate = AppDelegate()

@@ -1,0 +1,176 @@
+{
+  "schema": "rmu.control_schema.v1_8A",
+  "version": "v1.8A-operator-authority-hotkey-rebuild",
+  "purpose": "Canonical control schema. Hotkey/operator authority is final. VCV stepped controls become queued events. Renderer consumes effective control state.",
+  "authority_hierarchy": [
+    "emergency_operator_override",
+    "hotkey_operator_authority",
+    "operator_queue_resolver",
+    "source_proposals_vcv_dataset_ai",
+    "renderer_apply",
+    "metal_shader",
+    "hud_display"
+  ],
+  "rules": {
+    "hotkeys_override_everything": true,
+    "vcv_stepped_channels_are_event_sources_only": true,
+    "vcv_continuous_channels_may_remain_live": true,
+    "dataset_coupling_default_mode": "observe",
+    "behavior_presets_do_not_change_fields_or_camera": true,
+    "camera_manual_by_default": true,
+    "control_state_report_only": true,
+    "one_writer_per_state_file": true
+  },
+  "state_files": {
+    "operator_authority": "output/operator_authority_state.json",
+    "effective_control": "output/effective_control_state.json",
+    "control_events": "output/control_events.sqlite",
+    "vcv_source": "output/vcv_state.json",
+    "runtime": "output/runtime_state.json",
+    "legacy_control_report": "output/control_state.json"
+  },
+  "domains": {
+    "behavior": {
+      "default_authority": "hotkey_manual",
+      "auto_source": "queued_vcv_events",
+      "codes": {
+        "0": "none",
+        "1": "stable_orbit",
+        "2": "radial_flow",
+        "3": "orbital_flow",
+        "4": "turbulence_flow",
+        "5": "black_hole_capture",
+        "6": "shell_boundary",
+        "7": "species_controlled"
+      }
+    },
+    "fields": {
+      "default_authority": "hotkey_manual",
+      "auto_source": "queued_vcv_events",
+      "layers": [
+        "radial",
+        "orbital",
+        "vertical",
+        "turbulence",
+        "shell"
+      ]
+    },
+    "camera": {
+      "default_authority": "hotkey_manual",
+      "auto_allowed": false
+    },
+    "dataset_coupling": {
+      "default_mode": "observe",
+      "allowed_modes": [
+        "off",
+        "observe",
+        "propose",
+        "apply"
+      ]
+    },
+    "vcv": {
+      "role": "source_and_event_recorder"
+    }
+  },
+  "vcv_channels": {
+    "/ch/1": {
+      "label": "probability",
+      "class": "continuous"
+    },
+    "/ch/2": {
+      "label": "radial",
+      "class": "field_continuous_proposal"
+    },
+    "/ch/3": {
+      "label": "orbital",
+      "class": "field_continuous_proposal"
+    },
+    "/ch/4": {
+      "label": "vertical",
+      "class": "field_continuous_proposal"
+    },
+    "/ch/5": {
+      "label": "turbulence",
+      "class": "field_continuous_proposal"
+    },
+    "/ch/6": {
+      "label": "shell",
+      "class": "field_continuous_proposal"
+    },
+    "/ch/7": {
+      "label": "color",
+      "class": "continuous"
+    },
+    "/ch/8": {
+      "label": "scene_index",
+      "class": "stepped_event",
+      "domain": "field"
+    },
+    "/ch/9": {
+      "label": "particle_speed_bank_a",
+      "class": "continuous_or_poly"
+    },
+    "/ch/10": {
+      "label": "species_mass_bank_a",
+      "class": "continuous_or_poly"
+    },
+    "/ch/11": {
+      "label": "species_mass_bank_b",
+      "class": "continuous_or_poly"
+    },
+    "/ch/12": {
+      "label": "particle_turbulence_bank_a",
+      "class": "continuous_or_poly"
+    },
+    "/ch/13": {
+      "label": "particle_cohesion_bank_a",
+      "class": "continuous_or_poly"
+    },
+    "/ch/14": {
+      "label": "gravity_well_position",
+      "class": "continuous_or_poly"
+    },
+    "/ch/15": {
+      "label": "gravity_well_strength",
+      "class": "continuous"
+    },
+    "/ch/16": {
+      "label": "species_color_hsl_bank_a",
+      "class": "continuous_or_poly"
+    },
+    "/ch/17": {
+      "label": "species_color_hsl_bank_b",
+      "class": "continuous_or_poly"
+    },
+    "/ch/18": {
+      "label": "behavior_code",
+      "class": "stepped_event",
+      "domain": "behavior"
+    },
+    "/ch/19": {
+      "label": "behavior_gate_deprecated_event",
+      "class": "stepped_event",
+      "domain": "behavior_gate_deprecated"
+    },
+    "/ch/28": {
+      "label": "probability_bank_b",
+      "class": "continuous_or_poly"
+    },
+    "/ch/29": {
+      "label": "color_mode_bank_b",
+      "class": "continuous_or_poly"
+    },
+    "/ch/30": {
+      "label": "particle_speed_bank_b",
+      "class": "continuous_or_poly"
+    },
+    "/ch/31": {
+      "label": "particle_turbulence_bank_b",
+      "class": "continuous_or_poly"
+    },
+    "/ch/32": {
+      "label": "particle_cohesion_bank_b",
+      "class": "continuous_or_poly"
+    }
+  }
+}
