@@ -1021,6 +1021,21 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
     // Renderer-authoritative geospatial behavior transforms.
     // SPACE gates these transforms. When paused, the crab CSV field remains stable.
     var behaviorEffectCode: Int32 = 1
+
+    // RMU_PATCH_D_V1_11F_CINEMATIC_CAMERA_FULL_STACK_STATE_BEGIN
+    var cinematicCameraEnabled: Bool = false
+    var cinematicCameraStartUnix: Double = Date().timeIntervalSince1970
+    var cinematicCameraBaseRadius: Float = 0.0
+    var cinematicCameraBaseRotationRadians: Float = 0.0
+    var cinematicCameraBasePanX: Float = 0.0
+    var cinematicCameraBasePanY: Float = 0.0
+
+    // deliberately visible values for large v1.11 world scale
+    var cinematicCameraOrbitSpeed: Float = 0.24
+    var cinematicCameraZoomAmplitude: Float = 0.28
+    var cinematicCameraPanAmplitudeX: Float = 0.12
+    var cinematicCameraPanAmplitudeY: Float = 0.07
+    // RMU_PATCH_D_V1_11F_CINEMATIC_CAMERA_FULL_STACK_STATE_END
     var geospatialSimulationPaused: Int32 = 1
     var geospatialBehaviorEnabled: Bool = true
     var geospatialRespawnOnCapture: Bool = false
@@ -1855,7 +1870,8 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
             dataCouplingStatus = "manual lock: dataset coupling not applying fields"
             lastVisualStateMessage = "v1.7I manual field authority"
         }
-        if !autoBehavior {
+        if !autoBehavior && !rmuV16DBehaviorAuthorityActive {
+            // RMU_PATCH_C_V1_11F_BEHAVIOR_HUD_CONTROL_RECONCILIATION: do not let v1.7I manual authority stomp active /ch19 VCV behavior.
             let code = rmuV17IManualBehaviorCode(mode)
             behaviorEffectCode = code
             rmuV16DBehaviorAuthorityActive = false
@@ -1951,7 +1967,8 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
             dataCouplingStatus = "observe/manual locked"
             lastVisualStateMessage = "v1.7J manual field authority"
         }
-        if !rmuV17JAutoBehaviorEnabled() {
+        if !rmuV17JAutoBehaviorEnabled() && !rmuV16DBehaviorAuthorityActive {
+            // RMU_PATCH_C_V1_11F_BEHAVIOR_HUD_CONTROL_RECONCILIATION: do not let v1.7J manual authority stomp active /ch19 VCV behavior.
             let code = Int32(max(0, min(7, rmuV17JInt(mode["manual_behavior_code"], 0))))
             behaviorEffectCode = code
             geospatialBehaviorEnabled = code != 0
@@ -2027,10 +2044,15 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
         // /ch/18 = behavior code, /ch/19 = behavior authority gate.
         // Apply this immediately before encode/render so controller or legacy state cannot stomp it.
         let gateValue = rmuV16FNumberForChannel("/ch/19") ?? 0.0
-        let gateActive = rmuV16FVoiceCountForChannel("/ch/19") > 0 && gateValue >= 5.0
+        let behaviorCodePresent = rmuV16FVoiceCountForChannel("/ch/18") > 0 || rmuV16FNumberForChannel("/ch/18") != nil
+        let behaviorGatePresent = rmuV16FVoiceCountForChannel("/ch/19") > 0 || rmuV16FNumberForChannel("/ch/19") != nil
+
+        // RMU_PATCH_B_V1_11F_FINAL_BEHAVIOR_AUTHORITY
+        // Match v1.6E final authority semantics in the pre-encode path.
+        let gateActive = behaviorGatePresent && gateValue >= 5.0
 
         if gateActive,
-           rmuV16FVoiceCountForChannel("/ch/18") > 0,
+           behaviorCodePresent,
            let behaviorValue = rmuV16FNumberForChannel("/ch/18") {
             let directBehavior = Int32(max(0, min(7, Int(round(behaviorValue)))))
 
@@ -2297,6 +2319,7 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
     }
 
     func draw(in view: MTKView) {
+        rmuV111FApplyCinematicCameraIfNeeded() // RMU_PATCH_D_V1_11F_CINEMATIC_CAMERA_FULL_STACK: before camera matrices/render encoding
         let drawStart = CFAbsoluteTimeGetCurrent()
         frameLoader.loadIfNeeded()
         updateParticleBufferIfNeeded()
@@ -2651,7 +2674,8 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
     }
 
     func rmuV16GBehaviorAuthorityLabel() -> String {
-        return rmuV16DBehaviorAuthorityActive ? "VCV" : "MANUAL"
+        // RMU_PATCH_C_V1_11F_BEHAVIOR_HUD_CONTROL_RECONCILIATION: explicit behavior authority label for HUD.
+        return rmuV16DBehaviorAuthorityActive ? "VCV /ch19→/ch18" : "MANUAL/HOTKEY"
     }
 
     func rmuV16GBehaviorHUDSummary() -> String {
@@ -2692,7 +2716,8 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
     }
 
     func rmuV16GSystemHUDSummary() -> String {
-        return "v1.6G HUD | species v1.6B | color v1.6C | bridge v1.6D1 | apply v1.6F"
+        // RMU_PATCH_D_V1_11F_CINEMATIC_CAMERA_FULL_STACK: expose cinematic camera status.
+        return "v1.6G HUD | species v1.6B | color v1.6C | bridge v1.6D1 | apply v1.6F | \(rmuV111FCinematicCameraSummary())"
     }
     // RMU_V1_6G_HUD_AUTHORITY_HELPERS_END
 
@@ -2706,6 +2731,93 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
     func zoomIn() { let current = manualWorldRadius ?? frameLoader.worldRadius; manualWorldRadius = max(current / 1.75, 0.25); hud?.updateText() } // RMU_V1_11C_EXACT_BIG_ZOOM_BIG_PARTICLES: matched large-world zoom step
     func pan(dx: Float, dy: Float) { panX += dx; panY += dy; hud?.updateText() }
     func rotate(delta: Float) { rotationRadians += delta; hud?.updateText() }
+
+    // RMU_PATCH_D_V1_11F_CINEMATIC_CAMERA_FULL_STACK_METHODS_BEGIN
+    func rmuV111FCaptureCinematicBaseline() {
+        cinematicCameraStartUnix = Date().timeIntervalSince1970
+        cinematicCameraBaseRadius = manualWorldRadius ?? frameLoader.worldRadius
+        if cinematicCameraBaseRadius <= 0.0 {
+            cinematicCameraBaseRadius = 4200.0
+        }
+        cinematicCameraBaseRotationRadians = rotationRadians
+        cinematicCameraBasePanX = panX
+        cinematicCameraBasePanY = panY
+    }
+
+    func rmuV111FWriteCinematicCameraState(_ note: String) {
+        let state: [String: Any] = [
+            "schema": "rmu.cinematic_camera_state.v1_11F",
+            "version": "v1.11F",
+            "enabled": cinematicCameraEnabled,
+            "note": note,
+            "updated_unix": Date().timeIntervalSince1970,
+            "manual_world_radius": manualWorldRadius ?? frameLoader.worldRadius,
+            "rotation_radians": rotationRadians,
+            "pan_x": panX,
+            "pan_y": panY,
+            "orbit_speed": cinematicCameraOrbitSpeed,
+            "zoom_amplitude": cinematicCameraZoomAmplitude,
+            "pan_amplitude_x": cinematicCameraPanAmplitudeX,
+            "pan_amplitude_y": cinematicCameraPanAmplitudeY
+        ]
+
+        let url = URL(fileURLWithPath: projectRoot)
+            .appendingPathComponent("output")
+            .appendingPathComponent("cinematic_camera_state.json")
+
+        do {
+            let data = try JSONSerialization.data(withJSONObject: state, options: [.prettyPrinted])
+            try data.write(to: url)
+        } catch {
+            // Nonfatal. Camera should never crash because debug-state write failed.
+        }
+    }
+
+    func rmuV111FToggleCinematicCamera() {
+        cinematicCameraEnabled.toggle()
+        if cinematicCameraEnabled {
+            rmuV111FCaptureCinematicBaseline()
+            lastVisualStateMessage = "cinematic camera ON"
+        } else {
+            lastVisualStateMessage = "cinematic camera OFF"
+        }
+        rmuV111FWriteCinematicCameraState("toggle")
+        hud?.updateText()
+    }
+
+    func rmuV111FResetCinematicCamera() {
+        rmuV111FCaptureCinematicBaseline()
+        lastVisualStateMessage = cinematicCameraEnabled ? "cinematic camera reset" : "cinematic camera baseline reset"
+        rmuV111FWriteCinematicCameraState("reset")
+        hud?.updateText()
+    }
+
+    func rmuV111FApplyCinematicCameraIfNeeded() {
+        guard cinematicCameraEnabled else { return }
+
+        let now = Date().timeIntervalSince1970
+        let t = Float(now - cinematicCameraStartUnix)
+
+        let baseRadius = cinematicCameraBaseRadius > 0.0
+            ? cinematicCameraBaseRadius
+            : (manualWorldRadius ?? frameLoader.worldRadius)
+
+        let radiusPulse = 1.0 + cinematicCameraZoomAmplitude * sin(t * 0.17)
+        manualWorldRadius = max(0.25, min(baseRadius * radiusPulse, 100000.0))
+
+        rotationRadians = cinematicCameraBaseRotationRadians + (t * cinematicCameraOrbitSpeed)
+        panX = cinematicCameraBasePanX + cinematicCameraPanAmplitudeX * sin(t * 0.31)
+        panY = cinematicCameraBasePanY + cinematicCameraPanAmplitudeY * cos(t * 0.27)
+
+        rmuV111FWriteCinematicCameraState("frame_apply")
+    }
+
+    func rmuV111FCinematicCameraSummary() -> String {
+        return cinematicCameraEnabled
+            ? "CINEMATIC ON orbit \(String(format: "%.2f", cinematicCameraOrbitSpeed))"
+            : "CINEMATIC OFF"
+    }
+    // RMU_PATCH_D_V1_11F_CINEMATIC_CAMERA_FULL_STACK_METHODS_END
     func resetCamera() {
         panX = 0
         panY = 0
@@ -3193,12 +3305,18 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
         }
 
         let rmuV16EBehaviorGateValue = rmuV16ENumberForChannel("/ch/19") ?? 0.0
+        let rmuV16EBehaviorCodePresent = rmuV16EVoiceCountForChannel("/ch/18") > 0 || rmuV16ENumberForChannel("/ch/18") != nil
+        let rmuV16EBehaviorGatePresent = rmuV16EVoiceCountForChannel("/ch/19") > 0 || rmuV16ENumberForChannel("/ch/19") != nil
+
+        // RMU_PATCH_B_V1_11F_FINAL_BEHAVIOR_AUTHORITY
+        // /ch/19 >= 5V owns behavior. If the bridge has inserted the v1.11F fallback
+        // channel, voice_count may be synthetic. Treat numeric presence as valid too.
         let rmuV16EBehaviorGateActive =
-            rmuV16EVoiceCountForChannel("/ch/19") > 0 &&
+            rmuV16EBehaviorGatePresent &&
             rmuV16EBehaviorGateValue >= 5.0
 
         if rmuV16EBehaviorGateActive,
-           rmuV16EVoiceCountForChannel("/ch/18") > 0,
+           rmuV16EBehaviorCodePresent,
            let behaviorValue = rmuV16ENumberForChannel("/ch/18") {
             let directBehavior = Int32(max(0, min(7, Int(round(behaviorValue)))))
             behaviorEffectCode = directBehavior
@@ -4666,9 +4784,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         state["not_authority"] = true
         state["behavior_mode"] = currentBehaviorMode
         state["behavior_source"] = behaviorSource
+        // RMU_PATCH_C_V1_11F_BEHAVIOR_HUD_CONTROL_RECONCILIATION: override control_state behavior_source when VCV owns behavior.
+        if renderer?.rmuV16DBehaviorAuthorityActive ?? false {
+            state["behavior_source"] = "vcv_ch19_gate_ch18_behavior"
+        }
         state["behavior_lock"] = behaviorLock
         state["behavior_enabled"] = currentBehaviorEnabled
-        state["behavior_effect_code"] = renderer?.behaviorEffectCode ?? 0
+        // RMU_PATCH_C_V1_11F_BEHAVIOR_HUD_CONTROL_RECONCILIATION: report effective behavior, not stale renderer-local manual code.
+        state["behavior_effect_code"] = renderer?.rmuV16GEffectiveBehaviorCode() ?? 0
+        state["behavior_authority_source"] = (renderer?.rmuV16DBehaviorAuthorityActive ?? false) ? "vcv_ch19_gate_ch18_behavior" : "renderer_manual"
+        state["behavior_authority_gate"] = renderer?.rmuV16DBehaviorAuthorityGate ?? 0.0
+        state["behavior_authority_code"] = renderer?.rmuV16DBehaviorAuthorityCode ?? 0
         state["behavior_bypass_authority"] = "renderer_shift_e"
         state["behavior_timestamp_unix"] = Date().timeIntervalSince1970
         state["collapse_behavior"] = [
@@ -5083,13 +5209,10 @@ extension AppDelegate {
     func rmuV18AToggleDatasetMode() { let modes = ["off", "observe", "propose", "apply"]; let s = rmuV18AReadOperatorState(); let cur = s["dataset_coupling_mode"] as? String ?? "observe"; let idx = modes.firstIndex(of: cur) ?? 1; let next = modes[(idx + 1) % modes.count]; rmuV18AWriteOperatorState(["dataset_coupling_mode": next], reason: "dataset_mode_\(next)") }
     func rmuV18AToggleDatasetCouplingApply() { let s = rmuV18AReadOperatorState(); let cur = (s["dataset_coupling_mode"] as? String ?? "observe").lowercased(); let turnOn = cur != "apply"; rmuV18AWriteOperatorState(["dataset_coupling_mode": turnOn ? "apply" : "observe", "auto_fields_enabled": turnOn, "active_auto_domain": turnOn ? "field" : (s["active_auto_domain"] as? String ?? "behavior")], reason: turnOn ? "dataset_coupling_apply_on" : "dataset_coupling_observe_off") }
     func rmuV18AHandleKey(_ event: NSEvent) -> Bool {
-        // RMU_V1_11F_REPLACE_RMUV18A_HANDLEKEY_GATEWAY
-        // Gateway rule:
-        // - SPACE remains run/pause.
-        // - Camera and point-size keys are handled here because this v1.8A layer runs first.
-        // - Authority/control commands require SHIFT unless explicitly noted.
-        // - Unrecognized keys return false so the older documented handleKey() can process screenshots,
-        //   color hotkeys, HUD toggles, presentation mode, trails, etc.
+        // RMU_PATCH_A_V1_11F_GATEWAY_SHIFT_FIRST
+        // This handler is called before the older documented handleKey switch.
+        // Therefore all SHIFT authority commands must be evaluated before plain camera keys.
+        // Otherwise SHIFT+E becomes plain E zoom, SHIFT+A becomes rotate, etc.
 
         let shift = event.modifierFlags.contains(.shift)
         let control = event.modifierFlags.contains(.control)
@@ -5097,7 +5220,7 @@ extension AppDelegate {
         let panStep: Float = 0.035
         let rotStep: Float = 4.0 * .pi / 180.0
 
-        // Escape remains emergency manual, not app quit.
+        // ESC: emergency manual/safe state.
         if event.keyCode == 53 {
             rmuV18AEmergencyManual()
             return true
@@ -5109,7 +5232,125 @@ extension AppDelegate {
             return true
         }
 
-        // Corrected arrow pan. This is intentionally the reverse of the old inverted mapping.
+        // ============================================================
+        // SHIFT AUTHORITY COMMANDS FIRST
+        // ============================================================
+
+        if shift && chars.count == 1, let n = Int(chars), n >= 0 && n <= 7 {
+            rmuV18ASetBehavior(n)
+            return true
+        }
+
+        // SHIFT+E = behavior bypass/no-behavior toggle.
+        if shift && chars == "e" {
+            rmuV18AToggleNoBehavior()
+            return true
+        }
+
+        // SHIFT+A = behavior/field auto authority toggle.
+        if shift && chars == "a" {
+            rmuV18AToggleAuto()
+            return true
+        }
+
+        // SHIFT+B = dataset coupling apply/observe.
+        if shift && chars == "b" {
+            rmuV18AToggleDatasetCouplingApply()
+            return true
+        }
+
+        // SHIFT+M = full manual.
+        if shift && chars == "m" {
+            rmuV18AFullManual()
+            return true
+        }
+
+        // SHIFT+J = behavior queue.
+        if shift && chars == "j" {
+            rmuV18AToggleBehaviorQueue()
+            return true
+        }
+
+        // SHIFT+F = field queue.
+        if shift && chars == "f" {
+            rmuV18AToggleFieldQueue()
+            return true
+        }
+
+        // SHIFT+V = selected field layer.
+        if shift && chars == "v" {
+            rmuV18ACycleSelectedFieldLayer()
+            return true
+        }
+
+        // SHIFT+D = dataset mode cycle.
+        if shift && chars == "d" {
+            rmuV18AToggleDatasetMode()
+            return true
+        }
+
+        // RMU_PATCH_D_V1_11F_CINEMATIC_CAMERA_FULL_STACK: cinematic camera controls.
+        // SHIFT+C toggles cinematic camera.
+        // SHIFT+K resets the cinematic baseline/path. SHIFT+R is intentionally avoided.
+        if shift && chars == "c" {
+            renderer?.rmuV111FToggleCinematicCamera()
+            return true
+        }
+
+        if shift && chars == "k" {
+            renderer?.rmuV111FResetCinematicCamera()
+            return true
+        }
+
+        // SHIFT+. / SHIFT+, = active queue step.
+        if shift && chars == "." {
+            rmuV18AQueueStep(
+                domain: rmuV18AReadOperatorState()["active_auto_domain"] as? String ?? "behavior",
+                delta: 1
+            )
+            return true
+        }
+
+        if shift && chars == "," {
+            rmuV18AQueueStep(
+                domain: rmuV18AReadOperatorState()["active_auto_domain"] as? String ?? "behavior",
+                delta: -1
+            )
+            return true
+        }
+
+        // CTRL field weight controls.
+        if control && chars == "-" {
+            rmuV18AAdjustFieldWeight(delta: -0.05)
+            return true
+        }
+
+        if control && chars == "=" {
+            rmuV18AAdjustFieldWeight(delta: 0.05)
+            return true
+        }
+
+        // CTRL camera presets.
+        if control && ["1", "2", "3", "4"].contains(chars) {
+            switch chars {
+            case "1":
+                loadCameraPreset("gallery_orbit")
+            case "2":
+                loadCameraPreset("macro_disk")
+            case "3":
+                loadCameraPreset("wide_system")
+            case "4":
+                loadCameraPreset("default_camera")
+            default:
+                break
+            }
+            return true
+        }
+
+        // ============================================================
+        // CAMERA / VIEW COMMANDS
+        // ============================================================
+
         switch event.keyCode {
         case 123:
             renderer?.pan(dx: panStep, dy: 0)
@@ -5127,7 +5368,6 @@ extension AppDelegate {
             break
         }
 
-        // Camera controls.
         if chars == "w" || chars == "e" || chars == "]" {
             renderer?.zoomIn()
             return true
@@ -5135,11 +5375,6 @@ extension AppDelegate {
 
         if chars == "z" || chars == "q" || chars == "[" {
             renderer?.zoomOut()
-            return true
-        }
-
-        if chars == "x" {
-            renderer?.resetCamera()
             return true
         }
 
@@ -5153,6 +5388,11 @@ extension AppDelegate {
             return true
         }
 
+        if chars == "x" {
+            renderer?.resetCamera()
+            return true
+        }
+
         if chars == "+" || chars == "=" {
             renderer?.increasePointSize()
             return true
@@ -5163,85 +5403,7 @@ extension AppDelegate {
             return true
         }
 
-        // Camera presets stay on CTRL+1..4.
-        if control && ["1", "2", "3", "4"].contains(chars) {
-            switch chars {
-            case "1": loadCameraPreset("gallery_orbit")
-            case "2": loadCameraPreset("macro_disk")
-            case "3": loadCameraPreset("wide_system")
-            case "4": loadCameraPreset("default_camera")
-            default: break
-            }
-            return true
-        }
-
-        // Operator/authority controls.
-        if shift && chars.count == 1, let n = Int(chars), n >= 0 && n <= 7 {
-            rmuV18ASetBehavior(n)
-            return true
-        }
-
-        if shift && chars == "a" {
-            rmuV18AToggleAuto()
-            return true
-        }
-
-        if shift && chars == "b" {
-            rmuV18AToggleDatasetCouplingApply()
-            return true
-        }
-
-        if shift && chars == "n" {
-            rmuV18AToggleNoBehavior()
-            return true
-        }
-
-        if shift && chars == "m" {
-            rmuV18AFullManual()
-            return true
-        }
-
-        if shift && chars == "j" {
-            rmuV18AToggleBehaviorQueue()
-            return true
-        }
-
-        if shift && chars == "f" {
-            rmuV18AToggleFieldQueue()
-            return true
-        }
-
-        if shift && chars == "v" {
-            rmuV18ACycleSelectedFieldLayer()
-            return true
-        }
-
-        if shift && chars == "." {
-            rmuV18AQueueStep(domain: rmuV18AReadOperatorState()["active_auto_domain"] as? String ?? "behavior", delta: 1)
-            return true
-        }
-
-        if shift && chars == "," {
-            rmuV18AQueueStep(domain: rmuV18AReadOperatorState()["active_auto_domain"] as? String ?? "behavior", delta: -1)
-            return true
-        }
-
-        if shift && chars == "d" {
-            rmuV18AToggleDatasetMode()
-            return true
-        }
-
-        if control && chars == "-" {
-            rmuV18AAdjustFieldWeight(delta: -0.05)
-            return true
-        }
-
-        if control && chars == "=" {
-            rmuV18AAdjustFieldWeight(delta: 0.05)
-            return true
-        }
-
-        // Let the older documented handler process all remaining non-authority keys.
+        // Let the older documented handler process screenshots, HUD toggles, capture, etc.
         return false
     }
 }

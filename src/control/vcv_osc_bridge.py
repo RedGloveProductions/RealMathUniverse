@@ -9,6 +9,66 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List
 
+# RMU_V1_11F_NATIVE_GATE_FALLBACK
+def rmu_v111f_native_gate_fallback(state):
+    """
+    Keep /ch/8 and /ch/19 visible when VCV is sending stable gate voltage
+    but the bridge state omits those constant channels.
+
+    /ch/8  = behavior gate, high when /ch/18 behavior_code exists
+    /ch/19 = color gate, high when /ch/7 color_index exists
+    """
+    if not isinstance(state, dict):
+        return state
+
+    channels = state.setdefault("channels", {})
+    labels = state.setdefault("labels", {})
+
+    now = time.time()
+
+    def make_channel(label, value, reason):
+        return {
+            "label": label,
+            "raw": float(value),
+            "value": float(value),
+            "mapped": float(value),
+            "voices": [float(value)],
+            "voice_count": 1,
+            "source": "native_bridge_gate_fallback_v1_11F",
+            "reason": reason,
+            "updated_unix": now,
+        }
+
+    if "/ch/18" in channels and "/ch/8" not in channels:
+        channels["/ch/8"] = make_channel(
+            "behavior_gate",
+            10.0,
+            "fallback high because /ch/18 behavior_code is present and /ch/8 was omitted",
+        )
+
+    if "/ch/7" in channels and "/ch/19" not in channels:
+        channels["/ch/19"] = make_channel(
+            "color_gate",
+            10.0,
+            "fallback high because /ch/7 color_index is present and /ch/19 was omitted",
+        )
+
+    labels["/ch/8"] = "behavior_gate"
+    labels["/ch/19"] = "color_gate"
+
+    state["native_gate_fallback_v1_11F"] = {
+        "active": True,
+        "updated_unix": now,
+        "rules": {
+            "/ch/8": "fallback high if /ch/18 exists",
+            "/ch/19": "fallback high if /ch/7 exists",
+        },
+    }
+
+    return state
+
+
+
 try:
     from control_queue_db import connect, insert_event
 except Exception:
@@ -240,6 +300,8 @@ class Bridge:
             "updated_utc": utc_now_iso(),
         }
 
+        # RMU_V1_11F_CALL_NATIVE_GATE_FALLBACK_BEFORE_WRITE
+        output = rmu_v111f_native_gate_fallback(output)
         atomic_write_json(self.root / "output/vcv_state.json", output)
         atomic_write_json(self.writer_lock, writer)
 
