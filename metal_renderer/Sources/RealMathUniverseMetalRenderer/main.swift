@@ -1,10 +1,26 @@
+// RMU_V1_11A_PHASE3C_DISABLE_DISC_SNAP: disables old tiny-radius shell/orbital disc snap for large geospatial volume
 import AppKit
 import Foundation
 import Darwin
+
+
+// RMU v1.9N JSON write helper
+// Fixes v1.9M compile failure where patched code called rmuV19NWriteJSON(state, to: url)
+// but no writeJSON helper existed in this Swift file.
+func rmuV19NWriteJSON(_ object: Any, to url: URL) {
+    do {
+        let data = try JSONSerialization.data(withJSONObject: object, options: [.prettyPrinted, .sortedKeys])
+        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try data.write(to: url, options: [.atomic])
+    } catch {
+        print("RMU v1.9N JSON write failed: \(url.path): \(error)")
+    }
+}
 // v1.3D6 duplicate runtime helper cleanup applied
 import ImageIO
 import Metal
 import MetalKit
+// RMU_V1_9S_SOURCE_OF_TRUTH_REPAIR_MARKER
 import simd
 
 
@@ -29,7 +45,7 @@ final class ParticleFrameLoader {
     let metadataURL: URL
     var lastModificationDate: Date?
     var particles: [Particle] = []
-    var worldRadius: Float = 6.0
+    var worldRadius: Float = 4200.0 // RMU_V1_11A_PHASE3C_DISABLE_DISC_SNAP: large open volumetric world radius
     var latestPointCount: Int = 0
     var sourceParticleCount: Int = 0
     var latestFrameIndex: Int = 0
@@ -845,6 +861,7 @@ func rmuVCVDisplayLabel(_ channel: Int, fallback: String) -> String {
     return fallback
 }
 
+// RMU_V1_9M_COLOR_ENGINE_PATCH_INSTALLED
 final class MetalRenderer: NSObject, MTKViewDelegate {
     let device: MTLDevice
     let commandQueue: MTLCommandQueue
@@ -994,7 +1011,7 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
     var selectedFieldLayerIndex = 1
     var fieldLayerNames: [String] = ["radial", "orbital", "vertical", "turbulence", "shell"]
     var fieldLayerEnabled: [Bool] = [true, true, true, false, true]
-    var fieldLayerWeights: [Float] = [0.25, 1.00, 0.10, 0.05, 0.20]
+    var fieldLayerWeights: [Float] = [0.03, 0.02, 1.65, 2.25, 0.00] // RMU_V1_11A_PHASE3C_DISABLE_DISC_SNAP: volumetric field defaults
     var fieldPhase: Float = 0.0
 
     // RMU_V1_3D2_RENDERER_BEHAVIOR_STATE
@@ -1078,9 +1095,27 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
         return String(format: "G4 %.2f %.2f %.2f %.2f", x, y, z, t)
     }
 
+    // RMU_V1_9M_COLOR_ENGINE_HELPERS
+    func rmuColorModeDisplayName(_ mode: Int32) -> String {
+        switch Int(mode) {
+        case 0: return "white_cluster"
+        case 1: return "species_family"
+        case 2: return "depth_temperature"
+        case 3: return "field_energy"
+        case 4: return "curvature_density"
+        case 5: return "higgs_lambda"
+        case 6: return "probability_weight"
+        case 7: return "vcv_color_bank"
+        case 8: return "sonar_heat"
+        case 9: return "pioneer_green"
+        case 10: return "amber_scope"
+        default: return "mode \(mode)"
+        }
+    }
 
-    // RMU_V1_5F_COLOR_MODE_DISPLAY_HELPER
     func rmuVCVColorModeDisplayName() -> String {
+        return rmuColorModeDisplayName(vcvAuthorityColorMode)
+    }
 
     // RMU_V1_5G_RENDERER_SCENE_COLOR_FIELD_AUTHORITY_HELPERS
     func rmuApplyVCVSceneAuthority(_ scene: Int) {
@@ -1101,8 +1136,9 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
     }
 
     func rmuApplyVCVColorAuthority(_ mode: Int32) {
-        let clampedMode = max(Int32(0), min(Int32(4), mode))
+        let clampedMode = max(Int32(0), min(Int32(10), mode))
         vcvAuthorityColorMode = clampedMode
+        colorMode = clampedMode
 
         if vcvChannelValues.count > 6 {
             vcvChannelValues[6] = Float(clampedMode)
@@ -1111,9 +1147,7 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
             vcvRawChannelValues[6] = Float(clampedMode)
         }
 
-        // v1.6B repair: colorModeName is get-only.
-        // VCV color authority is stored in vcvAuthorityColorMode and vcvChannelValues[6].
-        _ = clampedMode
+        lastVisualStateMessage = "color mode \(clampedMode) \(rmuColorModeDisplayName(clampedMode))"
     }
 
     func rmuApplyVCVFieldLayerWeights(_ weights: [Float]) {
@@ -1124,16 +1158,6 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
             fieldLayerWeights[i] = weights[i]
         }
         selectedFieldLayerIndex = max(0, min(max(0, fieldLayerWeights.count - 1), vcvAuthorityFieldLayerIndex))
-    }
-        let mode = Int(vcvAuthorityColorMode)
-        switch mode {
-        case 0: return "classic"
-        case 1: return "thermal"
-        case 2: return "field"
-        case 3: return "species"
-        case 4: return "hsl"
-        default: return "mode \(mode)"
-        }
     }
 
     func rmuVCVCompactStatusLine() -> String {
@@ -1161,13 +1185,7 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
     }
 
     var colorModeName: String {
-        switch colorMode {
-        case 1: return "depth"
-        case 2: return "radial"
-        case 3: return "behavior"
-        case 4: return "thermal"
-        default: return "classic"
-        }
+        return rmuColorModeDisplayName(colorMode)
     }
 
     init?(view: MTKView, projectRoot: String) {
@@ -1258,7 +1276,7 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
                     fp += float3(n * 0.10, n * 0.06, n * 0.11) * fieldWeightsA.w;
                 }
 
-                if (fieldEnabledShell == 1) {
+                if (false) { // RMU_V1_11A_PHASE3C_DISABLE_DISC_SNAP: shell wall disabled for open volumetric domain
                     float shellRadius = worldRadius * 0.72;
                     float shellWidth = max(worldRadius * 0.08, 0.05);
                     float q = (baseRadius - shellRadius) / shellWidth;
@@ -1322,6 +1340,37 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
             VertexOut out;
             out.position = float4(x, y, 0.0, 1.0);
 
+            // RMU_V1_9M_COLOR_ENGINE_SHADER_BEGIN
+            float3 familyBase = float3(0.72, 0.90, 1.0);
+            float speciesShift = float(rmuV16CSpeciesID % 6u) / 5.0;
+            uint rmuFamily = 0u;
+            if (rmuV16CSpeciesID == 0u) {
+                rmuFamily = 0u;                       // crab / data baseline
+            } else if (rmuV16CSpeciesID == 1u || rmuV16CSpeciesID == 2u || rmuV16CSpeciesID == 11u || rmuV16CSpeciesID == 12u) {
+                rmuFamily = 1u;                       // leptons
+            } else if (rmuV16CSpeciesID == 3u || rmuV16CSpeciesID == 13u || rmuV16CSpeciesID == 14u) {
+                rmuFamily = 2u;                       // neutrinos
+            } else if (rmuV16CSpeciesID == 4u || rmuV16CSpeciesID == 5u || rmuV16CSpeciesID == 15u || rmuV16CSpeciesID == 16u || rmuV16CSpeciesID == 17u || rmuV16CSpeciesID == 18u) {
+                rmuFamily = 3u;                       // quarks
+            } else if (rmuV16CSpeciesID == 6u || rmuV16CSpeciesID == 7u || rmuV16CSpeciesID == 8u || rmuV16CSpeciesID == 19u || rmuV16CSpeciesID == 20u) {
+                rmuFamily = 4u;                       // boson / field / Higgs-like
+            } else {
+                rmuFamily = 5u;                       // hadron / meson-like
+            }
+
+            if (rmuFamily == 0u) { familyBase = float3(0.88, 0.96, 1.0); }
+            else if (rmuFamily == 1u) { familyBase = float3(0.15, 0.85, 1.0); }
+            else if (rmuFamily == 2u) { familyBase = float3(0.45, 0.35, 1.0); }
+            else if (rmuFamily == 3u) { familyBase = float3(1.0, 0.34 + 0.30 * speciesShift, 0.10); }
+            else if (rmuFamily == 4u) { familyBase = float3(0.10 + 0.55 * speciesShift, 1.0, 0.35 + 0.35 * speciesShift); }
+            else { familyBase = float3(1.0, 0.62, 0.18 + 0.24 * speciesShift); }
+
+            float fieldEnergy = clamp((fieldWeightsA.x + fieldWeightsA.y + fieldWeightsA.z + fieldWeightsA.w + fieldWeightShell) / 9.0, 0.0, 1.0);
+            float curvatureBand = 0.5 + 0.5 * sin(radial * 34.0 + fieldPhase * 0.65);
+            float higgsWave = 0.5 + 0.5 * sin(depth * 9.0 + radial * 14.0 + fieldPhase * 0.55);
+            float probabilityWave = 0.5 + 0.5 * sin(radial * 22.0 - fieldPhase * 1.35 + depth * 7.0);
+            float sonarStripe = smoothstep(0.45, 1.0, 0.5 + 0.5 * sin((1.0 - depth) * 30.0 + radial * 17.0 + fieldPhase * 1.8));
+
             if (overlayMode == 1) {
                 out.color = float4(0.18, 0.35, 0.65, alpha);
             } else if (overlayMode == 2) {
@@ -1334,19 +1383,35 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
             } else if (overlayMode == 5) {
                 float heat = 0.5 + 0.5 * sin(fieldPhase * 1.7 + radial * 24.0);
                 out.color = float4(1.0, 0.40 + heat * 0.35, 0.10, alpha);
+            } else if (colorMode == 0) {
+                out.color = float4(0.92, 0.97, 1.0, alpha);
             } else if (colorMode == 1) {
-                out.color = float4(0.25 + depth * 0.75, 0.45 + depth * 0.45, 1.0, alpha);
+                float3 speciesAccent = normalize(familyBase + float3(0.10 * speciesShift, 0.06 * sin(speciesShift * 6.28318), 0.08 * cos(speciesShift * 6.28318)));
+                out.color = float4(mix(familyBase, speciesAccent, 0.45), alpha);
             } else if (colorMode == 2) {
-                out.color = float4(0.25 + radial * 0.75, 0.8 - radial * 0.25, 1.0 - radial * 0.65, alpha);
+                out.color = float4(0.10 + depth * 0.95, 0.22 + depth * 0.55, 1.0 - depth * 0.82, alpha);
             } else if (colorMode == 3) {
-                // RMU_V1_6C_VERTEX_SPECIES_COLOR_MODE
-                out.color = float4(rmuV16CSpeciesColor, alpha);
+                out.color = float4(0.10 + fieldEnergy * 0.90, 0.30 + fieldEnergy * 0.65, 0.95 - fieldEnergy * 0.55, alpha);
             } else if (colorMode == 4) {
-                // RMU_V1_6C_VERTEX_SPECIES_HSL_COLOR_MODE
+                out.color = float4(0.12 + curvatureBand * 0.90, 0.95 - curvatureBand * 0.55, 0.28 + curvatureBand * 0.30, alpha);
+            } else if (colorMode == 5) {
+                out.color = float4(0.35 + higgsWave * 0.65, 0.10 + (1.0 - higgsWave) * 0.55, 1.0, alpha);
+            } else if (colorMode == 6) {
+                out.color = float4(0.18 + probabilityWave * 0.45, 1.0, 0.22 + (1.0 - probabilityWave) * 0.55, alpha);
+            } else if (colorMode == 7) {
                 out.color = float4(rmuV16CSpeciesColor, alpha);
+            } else if (colorMode == 8) {
+                out.color = float4(0.10 + sonarStripe * 0.95, 0.24 + sonarStripe * 0.62, 0.95 - sonarStripe * 0.88, alpha);
+            } else if (colorMode == 9) {
+                float glow = 0.55 + 0.45 * sin(fieldPhase + radial * 18.0 + depth * 4.0);
+                out.color = float4(0.05 + glow * 0.18, 0.72 + glow * 0.28, 0.34 + glow * 0.26, alpha);
+            } else if (colorMode == 10) {
+                float glow = 0.60 + 0.40 * sin(fieldPhase * 0.9 + radial * 16.0);
+                out.color = float4(1.0, 0.48 + glow * 0.32, 0.10 + glow * 0.10, alpha);
             } else {
-                out.color = float4(0.72 + depth * 0.28, 0.82 + depth * 0.18, 1.0, alpha);
+                out.color = float4(0.92, 0.97, 1.0, alpha);
             }
+            // RMU_V1_9M_COLOR_ENGINE_SHADER_END
 
             if (fieldLayersEnabled == 1 && overlayMode == 0 && fieldEnabledShell == 1) {
                 out.color.rgb = min(out.color.rgb + float3(shellMask * 0.35, shellMask * 0.25, shellMask * 0.12), float3(1.0, 1.0, 1.0));
@@ -1745,7 +1810,7 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
         let autoFields = rmuV17IBool(mode, "auto_fields_enabled", false)
         let autoBehavior = rmuV17IBool(mode, "auto_behavior_enabled", false)
         let autoCamera = rmuV17IBool(mode, "auto_camera_enabled", false)
-        if !autoFields {
+        if !autoFields && !rmuV19ODataCouplingApplyEnabled() {
             let weights = rmuV17IManualFieldWeights(mode)
             fieldLayerWeights = Array(weights.prefix(5))
             fieldLayerEnabled = fieldLayerWeights.map { $0 > 0.0 }
@@ -1840,7 +1905,7 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
     }
     func rmuV17JEnforceControlAuthority(reason: String = "unspecified") {
         let mode = rmuV17JControlModeObject()
-        if !rmuV17JAutoFieldsEnabled() {
+        if !rmuV19ODataCouplingApplyEnabled() && !rmuV17JAutoFieldsEnabled() {
             let weights = rmuV17JManualFieldWeights(mode)
             fieldLayerWeights = Array(weights.prefix(5))
             fieldLayerEnabled = fieldLayerWeights.map { $0 > 0.0 }
@@ -1952,6 +2017,13 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
     // RMU_V1_6F_PRE_ENCODE_VCV_AUTHORITY_END
 
     func encodeGeospatialParticleUpdate(commandBuffer: MTLCommandBuffer) {
+        // RMU_V1_11A_PHASE3E_MINIMAL_BYPASS_OLD_DISK_COMPUTE
+        // Proof mode: bypass the legacy compact-disk compute kernel.
+        // Set RMU_ENABLE_LEGACY_DISK_COMPUTE=1 only when comparing against the old snap-back behavior.
+        if ProcessInfo.processInfo.environment["RMU_ENABLE_LEGACY_DISK_COMPUTE"] != "1" {
+            return
+        }
+
         guard geospatialSimulationPaused == 0,
               let computePipelineState = computePipelineState,
               let base = baseParticleBuffer,
@@ -1990,18 +2062,24 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
 
         // RMU_V1_6F_COMPUTE_PRE_ENCODE_AUTHORITY_CALL
         rmuV16FApplyLiveVCVDirectAuthorityFromDisk()
+        // RMU_V1_9S_FINAL_DATASET_COUPLING_AUTHORITY
+        // Dataset coupling APPLY is higher than manual/scene field recipes, but lower than explicit future emergency locks.
+        if rmuV19ODataCouplingApplyEnabled() {
+            loadDatasetCouplingIfNeeded()
+            applyDatasetCouplingTargets()
+        }
 
         var dt = geospatialSimDt
         var behavior = rmuV16DBehaviorAuthorityActive ? rmuV16DBehaviorAuthorityCode : behaviorEffectCode
         var particleSpeed = geospatialParticleSpeed
-        var damping = geospatialDamping
+        var damping = min(max(geospatialDamping, 0.992), 0.9995) // RMU_V1_11A long-range velocity memory
         var weightsA = SIMD4<Float>(
             fieldLayerWeights[0],
             fieldLayerWeights[1],
             fieldLayerWeights[2],
             fieldLayerWeights[3]
         )
-        var shell = fieldLayerWeights[4]
+        var shell = fieldLayerWeights[4] * 0.03 // RMU_V1_11A weak shell, not wall
         var phase = fieldPhase
 
         encoder.setComputePipelineState(computePipelineState)
@@ -2169,6 +2247,11 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
         rmuV16FApplyLiveVCVDirectAuthorityFromDisk()
         // RMU_V1_7I_RENDER_PRE_DRAW_FINAL_MANUAL_OVERRIDE
         rmuV17IEnforceRendererManualAuthority(reason: "render_pre_draw")
+        // RMU_V1_9S_RENDER_FINAL_DATASET_COUPLING_AUTHORITY
+        if rmuV19ODataCouplingApplyEnabled() {
+            loadDatasetCouplingIfNeeded()
+            applyDatasetCouplingTargets()
+        }
 
         var fle = fieldLayersEnabled ? Int32(1) : Int32(0)
         var weightsA = SIMD4<Float>(
@@ -2312,7 +2395,7 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
     // RMU_V1_6B_SPECIES_IDENTITY_LOADER_END
 
     func updateParticleBufferIfNeeded() {
-        let particles = frameLoader.particles
+        var particles = frameLoader.particles // RMU_V1_11A mutable for large volumetric expansion
         guard !particles.isEmpty else { return }
 
         let currentMod = frameLoader.lastModificationDate
@@ -2328,6 +2411,37 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
         }
 
         let byteCount = particles.count * MemoryLayout<Particle>.stride
+
+        // RMU_V1_11A_LARGE_VOLUMETRIC_DOMAIN_PARTICLE_EXPANSION_BEGIN
+        // Convert the compact crab field into a large volumetric geospatial domain.
+        // Longitude-derived x and latitude-derived z are expanded strongly.
+        // Depth-derived y is amplified, with deterministic jitter to break planar compression.
+        // Disable with environment variable RMU_DISABLE_VOLUMETRIC_DOMAIN=1.
+        if ProcessInfo.processInfo.environment["RMU_DISABLE_VOLUMETRIC_DOMAIN"] != "1" {
+            let rmuV111AXScale: Float = 28.0
+            let rmuV111AYScale: Float = 22.0
+            let rmuV111AZScale: Float = 32.0
+            let rmuV111AJitter: Float = 0.35
+            let rmuV111ADepthJitter: Float = 3.0
+
+            for rmuV111AIndex in particles.indices {
+                let seed = Float((rmuV111AIndex % 9973) + 1)
+                let jx = Float(sin(Double(seed) * 12.9898)) * rmuV111AJitter
+                let jy = Float(sin(Double(seed) * 78.2330)) * rmuV111ADepthJitter
+                let jz = Float(sin(Double(seed) * 37.7190)) * rmuV111AJitter
+
+                var p = particles[rmuV111AIndex].position
+                p.x = p.x * rmuV111AXScale + jx
+                p.y = p.y * rmuV111AYScale + jy
+                p.z = p.z * rmuV111AZScale + jz
+
+                particles[rmuV111AIndex] = Particle(position: p)
+            }
+
+            print("RMU v1.11A large volumetric domain applied to \(particles.count) particles")
+        }
+        // RMU_V1_11A_LARGE_VOLUMETRIC_DOMAIN_PARTICLE_EXPANSION_END
+
         guard let baseBuffer = device.makeBuffer(bytes: particles, length: byteCount, options: [.storageModeShared]),
               let liveBuffer = device.makeBuffer(bytes: particles, length: byteCount, options: [.storageModeShared]) else { return }
 
@@ -2562,7 +2676,7 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
     }
 
     func clampVCVColorMode(_ value: Int) -> Int32 {
-        let clamped = max(0, min(value, 4))
+        let clamped = max(0, min(value, 10))
         if clamped != value {
             vcvLastClampEvent = "/ch/7 color clamped \(value) -> \(clamped)"
         }
@@ -2728,7 +2842,7 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
         }
         // RMU_V1_5G_COLOR_AUTHORITY_PARSE
         if let colorNumber = json["color_mode"] as? NSNumber {
-            let c = max(Int32(0), min(Int32(4), colorNumber.int32Value))
+            let c = max(Int32(0), min(Int32(10), colorNumber.int32Value))
             if vcvChannelValues.count > 6 {
                 vcvChannelValues[6] = Float(c)
             }
@@ -2736,7 +2850,7 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
                 vcvRawChannelValues[6] = Float(c)
             }
         } else if particleSpeciesColorMode.count > 0 {
-            let c = max(Int32(0), min(Int32(4), particleSpeciesColorMode[0]))
+            let c = max(Int32(0), min(Int32(10), particleSpeciesColorMode[0]))
             if vcvChannelValues.count > 6 {
                 vcvChannelValues[6] = Float(c)
             }
@@ -2983,6 +3097,34 @@ if let probabilityNumber = (json["probability_value"] as? NSNumber) ?? (json["pr
             }
         }
 
+
+        // RMU_V1_9M_COLOR_OVERRIDE_FINAL_APPLY
+        var rmuV19MColorCandidate: Int? = nil
+        if let topColor = json["color_mode"] as? NSNumber {
+            rmuV19MColorCandidate = topColor.intValue
+        }
+        if rmuV19MColorCandidate == nil,
+           let channelsDict = json["channels"] as? [String: Any],
+           let ch7 = channelsDict["/ch/7"] as? [String: Any] {
+            if let n = (ch7["value"] as? NSNumber) ?? (ch7["mapped"] as? NSNumber) ?? (ch7["raw"] as? NSNumber) {
+                rmuV19MColorCandidate = n.intValue
+            }
+        }
+        let rmuV19MColorURL = URL(fileURLWithPath: projectRoot)
+            .appendingPathComponent("output")
+            .appendingPathComponent("color_override_state.json")
+        if let colorData = try? Data(contentsOf: rmuV19MColorURL),
+           let colorJSON = try? JSONSerialization.jsonObject(with: colorData, options: []) as? [String: Any],
+           let colorNumber = colorJSON["color_mode"] as? NSNumber {
+            rmuV19MColorCandidate = colorNumber.intValue
+        }
+        if let rawColor = rmuV19MColorCandidate {
+            let c = vcvSafeModeEnabled ? clampVCVColorMode(rawColor) : Int32(max(0, min(10, rawColor)))
+            vcvRawChannelValues[6] = Float(rawColor)
+            vcvChannelValues[6] = Float(c)
+            rmuApplyVCVColorAuthority(c)
+        }
+
         if let sceneNumber = json["scene_index"] as? NSNumber {
             let rawScene = sceneNumber.intValue
             let scene = vcvSafeModeEnabled ? clampVCVSceneIndex(rawScene) : rawScene
@@ -3141,6 +3283,74 @@ if let probabilityNumber = (json["probability_value"] as? NSNumber) ?? (json["pr
 
 }
 
+
+
+    // RMU_V1_9O_DATASET_COUPLING_OPERATOR_AUTHORITY_BEGIN
+    func rmuV19OReadJSONDict(_ parts: [String]) -> [String: Any] {
+        var url = URL(fileURLWithPath: projectRoot)
+        for part in parts { url.appendPathComponent(part) }
+        guard let data = try? Data(contentsOf: url),
+              let obj = try? JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] else { return [:] }
+        return obj
+    }
+
+    func rmuV19OWriteJSONDict(_ obj: [String: Any], _ parts: [String]) {
+        var url = URL(fileURLWithPath: projectRoot)
+        for part in parts { url.appendPathComponent(part) }
+        try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        if let data = try? JSONSerialization.data(withJSONObject: obj, options: [.prettyPrinted, .sortedKeys]) {
+            try? data.write(to: url, options: [.atomic])
+        }
+    }
+
+    func rmuV19ODatasetCouplingMode() -> String {
+        let op = rmuV19OReadJSONDict(["output", "operator_authority_state.json"])
+        if let s = op["dataset_coupling_mode"] as? String, !s.isEmpty { return s.lowercased() }
+        let manual = rmuV19OReadJSONDict(["output", "manual_authority_mode.json"])
+        if let s = manual["dataset_coupling_mode"] as? String, !s.isEmpty { return s.lowercased() }
+        let dc = rmuV19OReadJSONDict(["output", "dataset_coupling_state.json"])
+        if let s = dc["mode"] as? String, !s.isEmpty { return s.lowercased() }
+        if let b = dc["enabled"] as? Bool { return b ? "apply" : "observe" }
+        return "observe"
+    }
+
+    func rmuV19ODataCouplingApplyEnabled() -> Bool {
+        let mode = rmuV19ODatasetCouplingMode()
+        return mode == "apply" || mode == "on" || mode == "active" || mode == "enabled"
+    }
+
+    func rmuV19OSetDatasetCouplingMode(_ requestedMode: String, reason: String = "renderer_toggle") {
+        let mode = requestedMode.lowercased() == "apply" ? "apply" : "observe"
+        let enabled = mode == "apply"
+        var op = rmuV19OReadJSONDict(["output", "operator_authority_state.json"])
+        op["dataset_coupling_mode"] = mode
+        op["dataset_coupling_enabled"] = enabled
+        op["auto_fields_enabled"] = enabled
+        op["active_auto_domain"] = enabled ? "dataset_coupling" : (op["active_auto_domain"] ?? "manual")
+        op["last_hotkey_reason"] = "dataset_coupling_\(mode)_\(reason)"
+        op["updated_by"] = "MetalRenderer.v1_9O"
+        op["updated_unix"] = Date().timeIntervalSince1970
+        rmuV19OWriteJSONDict(op, ["output", "operator_authority_state.json"])
+
+        var manual = rmuV19OReadJSONDict(["output", "manual_authority_mode.json"])
+        manual["dataset_coupling_mode"] = mode
+        manual["auto_fields_enabled"] = enabled
+        manual["updated_by"] = "MetalRenderer.v1_9O"
+        manual["updated_unix"] = Date().timeIntervalSince1970
+        rmuV19OWriteJSONDict(manual, ["output", "manual_authority_mode.json"])
+
+        var dc = rmuV19OReadJSONDict(["output", "dataset_coupling_state.json"])
+        dc["mode"] = mode
+        dc["enabled"] = enabled
+        dc["apply_enabled"] = enabled
+        dc["status"] = enabled ? "active" : "observe"
+        dc["summary"] = enabled ? "dataset coupling apply enabled by v1.9O" : "dataset coupling observe only by v1.9O"
+        dc["updated_by"] = "MetalRenderer.v1_9O"
+        dc["updated_unix"] = Date().timeIntervalSince1970
+        rmuV19OWriteJSONDict(dc, ["output", "dataset_coupling_state.json"])
+    }
+    // RMU_V1_9O_DATASET_COUPLING_OPERATOR_AUTHORITY_END
+
     func datasetCouplingStateURL() -> URL {
         URL(fileURLWithPath: projectRoot)
             .appendingPathComponent("output")
@@ -3174,6 +3384,11 @@ if let probabilityNumber = (json["probability_value"] as? NSNumber) ?? (json["pr
         dataCouplingSource = (json["source"] as? String) ?? "dataset_coupling_state.json"
         dataCouplingSummary = (json["summary"] as? String) ?? "dataset coupling active"
 
+        // RMU_V1_9M_DATASET_COUPLING_AUTHORITY_SYNC
+        // The external HUD and Shift+B now drive dataset coupling through operator_authority_state.json.
+        // "apply" means dataset coupling may actually drive field-layer weights; observe/off means read-only.
+        dataCouplingEnabled = rmuV17JDatasetCouplingApplyEnabled()
+
         if let gainNumber = json["gain"] as? NSNumber {
             dataCouplingGain = Float(gainNumber.doubleValue)
         }
@@ -3189,19 +3404,18 @@ if let probabilityNumber = (json["probability_value"] as? NSNumber) ?? (json["pr
             dataCouplingTargets = targets.map { clampDataWeight(Float($0.doubleValue)) }
         }
 
-        // RMU_V1_7I_DATASET_COUPLING_MANUAL_GUARD
-        if !rmuV17IAutoFieldsEnabled() {
-            dataCouplingStatus = "manual locked"
-            dataCouplingSummary = "manual field authority active; dataset coupling read but not applied"
+        // RMU_V1_9M_DATASET_COUPLING_APPLY_GUARD
+        let rmuV19MCouplingMode = (rmuV17JControlModeObject()["dataset_coupling_mode"] as? String ?? "observe").lowercased()
+        let rmuV19MApply = rmuV19MCouplingMode == "apply"
+        dataCouplingEnabled = rmuV19MApply
+        if !rmuV19MApply {
+            dataCouplingStatus = rmuV19MCouplingMode == "off" ? "off" : "observe"
+            dataCouplingSummary = "dataset coupling \(dataCouplingStatus); read-only, not applied"
             return
         }
-        // RMU_V1_7J_DATASET_COUPLING_APPLY_GUARD
-        if !rmuV17JDatasetCouplingApplyEnabled() || !rmuV17JAutoFieldsEnabled() {
-            dataCouplingStatus = "observe/manual locked"
-            dataCouplingSummary = "dataset coupling observed but not applied under v1.7J"
-            return
-        }
-        if dataCouplingEnabled && dataCouplingLoaded && !dataCouplingFallbackActive {
+        if dataCouplingLoaded && !dataCouplingFallbackActive {
+            dataCouplingStatus = "active"
+            dataCouplingSummary = "dataset coupling apply mode active"
             applyDatasetCouplingTargets()
         }
     }
@@ -3219,8 +3433,12 @@ if let probabilityNumber = (json["probability_value"] as? NSNumber) ?? (json["pr
     }
 
     func toggleDataCoupling() {
-        dataCouplingEnabled.toggle()
-        print("Dataset coupling: \(dataCouplingEnabled ? "ON" : "OFF")")
+        let nextMode = rmuV19ODataCouplingApplyEnabled() ? "observe" : "apply"
+        rmuV19OSetDatasetCouplingMode(nextMode, reason: "shift_b")
+        dataCouplingEnabled = nextMode == "apply"
+        dataCouplingStatus = dataCouplingEnabled ? "active" : "observe"
+        dataCouplingSummary = dataCouplingEnabled ? "dataset coupling apply enabled" : "dataset coupling observe only"
+        print("Dataset coupling: \(dataCouplingEnabled ? "ON/APPLY" : "OBSERVE/OFF")")
         hud?.updateText()
     }
 
@@ -3385,7 +3603,7 @@ if let probabilityNumber = (json["probability_value"] as? NSNumber) ?? (json["pr
         hud?.updateText()
     }
 
-    func cycleColor() { colorMode = (colorMode + 1) % 5; hud?.updateText() }
+    func cycleColor() { colorMode = (colorMode + 1) % 11; hud?.updateText() }
     func setColor(_ mode: Int32) { colorMode = mode; hud?.updateText() }
     func toggleTrails() { trailsEnabled.toggle(); if !trailsEnabled { trailBuffers.removeAll(); trailCounts.removeAll() }; hud?.updateText() }
     func clearTrails() { trailBuffers.removeAll(); trailCounts.removeAll(); hud?.updateText() }
@@ -3868,7 +4086,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             "updated_by": "metal_renderer_v1_3D11_behavior_state",
             "timestamp_unix": now
         ]
-        writeJSON(obj, to: url)
+        rmuV19NWriteJSON(obj, to: url)
     }
 
 
@@ -3880,7 +4098,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let url = controlStateURL()
         if FileManager.default.fileExists(atPath: url.path) { return }
         try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-        writeJSON([
+        rmuV19NWriteJSON([
             "role": "report_only_not_authority",
             "not_authority": true,
             "behavior_mode": currentBehaviorMode,
@@ -4118,8 +4336,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             "source": source,
             "timestamp_unix": now
         ]
-        writeJSON(obj, to: runtimeStateURL())
-        writeJSON(obj, to: geospatialRuntimeStateURL())
+        rmuV19NWriteJSON(obj, to: runtimeStateURL())
+        rmuV19NWriteJSON(obj, to: geospatialRuntimeStateURL())
     }
 
 
@@ -4216,7 +4434,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard let renderer = renderer else { return }
         let state = renderer.visualStateDictionary(name: "slot_\(slot)", slot: slot)
         let url = visualStateURL(slot: slot)
-        writeJSON(state, to: url)
+        rmuV19NWriteJSON(state, to: url)
         renderer.activeVisualStateName = "saved_slot_\(slot)"
         renderer.lastVisualStateMessage = "saved slot \(slot)"
         print("Visual state saved to slot \(slot): \(url.path)")
@@ -4347,12 +4565,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         state["display_particle_limit"] = renderer?.geospatialDisplayParticleLimit ?? 70000
         state["updated_by"] = "metal_renderer_v1_3F6_control_state"
         state["timestamp_unix"] = Date().timeIntervalSince1970
-        writeJSON(state, to: url)
+        rmuV19NWriteJSON(state, to: url)
         print("Control state written by metal_renderer_v1_3F6_control_state: \(state)")
         hud?.updateText()
     }
 
-    func writeJSON(_ object: [String: Any], to url: URL) {
+    func rmuV19NWriteJSON(_ object: [String: Any], to url: URL) {
         do {
             let data = try JSONSerialization.data(withJSONObject: object, options: [.prettyPrinted])
             let tmpURL = url.deletingLastPathComponent().appendingPathComponent(url.lastPathComponent + ".tmp")
@@ -4611,7 +4829,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         manifest["captures"] = captures
         manifest["capture_count"] = captures.count
         manifest["last_updated_utc"] = iso.string(from: Date())
-        writeJSON(manifest, to: url)
+        rmuV19NWriteJSON(manifest, to: url)
         writeSessionSummaryMarkdown(captures: captures, lastUpdatedUTC: iso.string(from: Date()))
     }
 
@@ -4687,7 +4905,7 @@ extension AppDelegate {
     func rmuV18AWriteOperatorState(_ patch: [String: Any], reason: String) {
         var state = rmuV18AReadOperatorState(); state["schema"] = "rmu.operator_authority_state.v1_8A"; state["version"] = "v1.8A"; state["updated_by"] = "swift_hotkey_v1_8A"; state["last_hotkey_reason"] = reason; state["updated_unix"] = Date().timeIntervalSince1970
         for (k, v) in patch { state[k] = v }
-        let url = rmuV18AOperatorURL(); try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true); writeJSON(state, to: url); print("RMU v1.8A operator hotkey: \(reason)"); hud?.updateText()
+        let url = rmuV18AOperatorURL(); try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true); rmuV19NWriteJSON(state, to: url); print("RMU v1.8A operator hotkey: \(reason)"); hud?.updateText()
     }
     func rmuV18AWeights() -> [String: Double] { let s = rmuV18AReadOperatorState(); return s["manual_field_weights"] as? [String: Double] ?? ["radial": 1.0, "orbital": 1.0, "vertical": 1.0, "turbulence": 1.0, "shell": 1.0] }
     func rmuV18ASetBehavior(_ code: Int) { let c = max(0, min(7, code)); var patch: [String: Any] = ["manual_behavior_code": c, "auto_behavior_enabled": false, "no_behavior_enabled": c == 0]; if c != 0 { patch["last_manual_behavior_code"] = c }; rmuV18AWriteOperatorState(patch, reason: "manual_behavior_\(c)") }
@@ -4703,6 +4921,7 @@ extension AppDelegate {
     func rmuV18AAdjustFieldWeight(delta: Double) { let s = rmuV18AReadOperatorState(); let layer = s["selected_field_layer"] as? String ?? "radial"; var weights = rmuV18AWeights(); weights[layer] = max(0.0, min(10.0, (weights[layer] ?? 1.0) + delta)); rmuV18AWriteOperatorState(["manual_field_weights": weights, "auto_fields_enabled": false], reason: "field_weight_\(layer)") }
     func rmuV18ACycleSelectedFieldLayer() { let order = ["radial", "orbital", "vertical", "turbulence", "shell"]; let s = rmuV18AReadOperatorState(); let cur = s["selected_field_layer"] as? String ?? "radial"; let idx = order.firstIndex(of: cur) ?? 0; let next = order[(idx + 1) % order.count]; rmuV18AWriteOperatorState(["selected_field_layer": next], reason: "selected_field_layer_\(next)") }
     func rmuV18AToggleDatasetMode() { let modes = ["off", "observe", "propose", "apply"]; let s = rmuV18AReadOperatorState(); let cur = s["dataset_coupling_mode"] as? String ?? "observe"; let idx = modes.firstIndex(of: cur) ?? 1; let next = modes[(idx + 1) % modes.count]; rmuV18AWriteOperatorState(["dataset_coupling_mode": next], reason: "dataset_mode_\(next)") }
+    func rmuV18AToggleDatasetCouplingApply() { let s = rmuV18AReadOperatorState(); let cur = (s["dataset_coupling_mode"] as? String ?? "observe").lowercased(); let turnOn = cur != "apply"; rmuV18AWriteOperatorState(["dataset_coupling_mode": turnOn ? "apply" : "observe", "auto_fields_enabled": turnOn, "active_auto_domain": turnOn ? "field" : (s["active_auto_domain"] as? String ?? "behavior")], reason: turnOn ? "dataset_coupling_apply_on" : "dataset_coupling_observe_off") }
     func rmuV18AHandleKey(_ event: NSEvent) -> Bool {
         let shift = event.modifierFlags.contains(.shift); let control = event.modifierFlags.contains(.control); let chars = event.charactersIgnoringModifiers?.lowercased() ?? ""; let panStep: Float = 0.035; let rotStep: Float = 4.0 * .pi / 180.0
         if event.keyCode == 53 { rmuV18AEmergencyManual(); return true }
@@ -4716,7 +4935,7 @@ extension AppDelegate {
         if chars == "a" { rmuV18AToggleAuto(); return true }
         if chars == "n" { rmuV18AToggleNoBehavior(); return true }
         if chars == "b" { rmuV18AToggleBehaviorQueue(); return true }
-        if shift && chars == "b" { rmuV18AWriteOperatorState(["command": ["action": "clear_queues", "id": UUID().uuidString]], reason: "clear_behavior_queue"); return true }
+        if shift && chars == "b" { rmuV18AToggleDatasetCouplingApply(); return true }
         if chars == "f" { rmuV18AToggleFieldQueue(); return true }
         if shift && chars == "f" { rmuV18AWriteOperatorState(["auto_fields_enabled": false], reason: "force_field_manual"); return true }
         if chars == "v" { rmuV18ACycleSelectedFieldLayer(); return true }

@@ -1,0 +1,42 @@
+{
+  "schema": "rmu.volumetric_force_profile.v1_11A",
+  "version": "v1.11A",
+  "purpose": "remove visible confinement and let the geospatial particle cloud evolve over larger distances",
+
+  "field_weights": {
+    "radial": 0.42,
+    "orbital": 0.65,
+    "vertical": 1.35,
+    "turbulence": 1.85,
+    "shell": 0.03
+  },
+
+  "motion": {
+    "damping_min": 0.992,
+    "damping_max": 0.9995,
+    "velocity_memory": "long",
+    "allow_long_range_drift": true,
+    "max_velocity_multiplier": 2.5
+  },
+
+  "boundary": {
+    "hard_clamp_enabled": false,
+    "visible_ring_boundary_enabled": false,
+    "shell_as_wall_enabled": false,
+    "shell_as_weak_field_influence": true,
+    "soft_far_field_radius": 4200.0,
+    "soft_return_strength": 0.00004
+  },
+
+  "dataset_coupling": {
+    "recommended_mode": "observe",
+    "reason": "large-world phase should not let coupling immediately collapse particles back into a tight disk"
+  },
+
+  "notes": [
+    "The shell value is intentionally almost zero.",
+    "Radial attraction is reduced.",
+    "Vertical and turbulence are increased to break the flat disk.",
+    "Orbital remains present but should behave like motion tendency, not confinement."
+  ]
+}

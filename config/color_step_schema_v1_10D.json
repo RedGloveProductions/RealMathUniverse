@@ -1,0 +1,25 @@
+{
+  "schema": "rmu.color_step_schema.v1_10D",
+  "version": "v1.10D",
+  "input_channel": "/ch/7",
+  "trigger_channel": "/ch/19",
+  "trigger_high_threshold": 5.0,
+  "trigger_rearm_threshold": 2.0,
+  "mode": "sample_and_hold_on_rising_gate",
+  "notes": [
+    "/ch/7 is color voltage only.",
+    "/ch/19 is color trigger/gate only.",
+    "/ch/8 is not touched by this color system.",
+    "When /ch/19 rises above 5V, RMU samples /ch/7 and holds that color until the next trigger."
+  ],
+  "steps": [
+    { "slot": 0, "voltage": 0.00, "color_mode": 1,  "name": "species_family" },
+    { "slot": 1, "voltage": 1.43, "color_mode": 2,  "name": "depth_temperature" },
+    { "slot": 2, "voltage": 2.86, "color_mode": 3,  "name": "field_energy" },
+    { "slot": 3, "voltage": 4.29, "color_mode": 4,  "name": "curvature_density" },
+    { "slot": 4, "voltage": 5.71, "color_mode": 5,  "name": "higgs_lambda" },
+    { "slot": 5, "voltage": 7.14, "color_mode": 6,  "name": "probability_weight" },
+    { "slot": 6, "voltage": 8.57, "color_mode": 9,  "name": "pioneer_green" },
+    { "slot": 7, "voltage": 10.00, "color_mode": 10, "name": "amber_scope" }
+  ]
+}

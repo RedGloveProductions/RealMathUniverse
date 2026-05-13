@@ -1,0 +1,52 @@
+{
+  "schema": "rmu.geospatial_domain.v1_11A",
+  "version": "v1.11A",
+  "mode": "large_volumetric_geospatial_cube",
+
+  "source_mapping": {
+    "longitude": "x",
+    "depth": "y",
+    "latitude": "z",
+    "time_or_row_order": "t"
+  },
+
+  "geographic_reference": {
+    "use_percentile_bounds": true,
+    "longitude_percentiles": [1, 99],
+    "latitude_percentiles": [1, 99],
+    "depth_percentiles": [1, 99],
+    "longitude_km_per_degree_reference": 99.5,
+    "latitude_km_per_degree_reference": 111.0
+  },
+
+  "simulation_world": {
+    "coordinate_mode": "normalized_source_expanded_to_large_cube",
+    "x_scale": 28.0,
+    "y_scale": 22.0,
+    "z_scale": 32.0,
+    "spawn_jitter": 0.35,
+    "depth_jitter": 3.0,
+    "world_half_extent_x": 3200.0,
+    "world_half_extent_y": 2200.0,
+    "world_half_extent_z": 3600.0,
+    "soft_radius": 4200.0,
+    "boundary_mode": "open_soft_far_field",
+    "hard_clamp_enabled": false,
+    "visible_boundary_enabled": false
+  },
+
+  "rendering": {
+    "expected_camera_behavior": "free_fly_large_world",
+    "recommended_start_distance": 80.0,
+    "recommended_point_size": 1.0,
+    "use_depth_cueing": true,
+    "use_distance_falloff": true
+  },
+
+  "notes": [
+    "This config separates data domain, simulation domain, and camera/render domain.",
+    "Dataset coordinates become initial conditions, not a visual cage.",
+    "Shell/radial containment should become weak field influence only, not a boundary wall.",
+    "The crab dataset covers a regional geographic footprint, so the renderer should not compress it into a small disk."
+  ]
+}
