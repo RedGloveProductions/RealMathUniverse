@@ -1,3 +1,5 @@
+// RMU_V1_11C_EXACT_BIG_ZOOM_BIG_PARTICLES: exact-anchor camera zoom and particle scale patch
+// RMU_V1_11B_TRUE_VOLUMETRIC_KERNEL: open-world live position + velocity update, no legacy disk snap
 // RMU_V1_11A_PHASE3C_DISABLE_DISC_SNAP: disables old tiny-radius shell/orbital disc snap for large geospatial volume
 import AppKit
 import Foundation
@@ -892,7 +894,7 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
     var currentFrameTimeMS: Double = 0.0
     var lateFrameWarning: Bool = false
 
-    var pointSize: Float = 2.0
+    var pointSize: Float = 32.0 // RMU_V1_11C_EXACT_BIG_ZOOM_BIG_PARTICLES: basketball-sized particles
     var manualWorldRadius: Float? = nil
     var panX: Float = 0.0
     var panY: Float = 0.0
@@ -2016,11 +2018,138 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
     }
     // RMU_V1_6F_PRE_ENCODE_VCV_AUTHORITY_END
 
+
+    // RMU_V1_11B_TRUE_VOLUMETRIC_KERNEL_METHOD_BEGIN
+    // Open-world volumetric motion path.
+    // This deliberately avoids the old base-radius / shell / compact disk attractor.
+    // It updates live positions and velocity memory directly in shared buffers.
+    func rmuV111BUpdateVolumetricParticlesCPU() {
+        guard let liveBuffer = liveParticleBuffer,
+              let velocityBuffer = velocityParticleBuffer else {
+            return
+        }
+
+        let stride = MemoryLayout<Particle>.stride
+        let liveCount = liveBuffer.length / stride
+        let velocityCount = velocityBuffer.length / stride
+        let count = min(liveCount, velocityCount)
+
+        if count <= 0 {
+            return
+        }
+
+        let live = liveBuffer.contents().bindMemory(to: Particle.self, capacity: count)
+        let velocity = velocityBuffer.contents().bindMemory(to: Particle.self, capacity: count)
+
+        let t = Float(Date().timeIntervalSince1970.truncatingRemainder(dividingBy: 100000.0))
+
+        let radialWeight = fieldLayerWeights.count > 0 ? max(0.0, fieldLayerWeights[0]) : 0.03
+        let orbitalWeight = fieldLayerWeights.count > 1 ? max(0.0, fieldLayerWeights[1]) : 0.02
+        let verticalWeight = fieldLayerWeights.count > 2 ? max(0.0, fieldLayerWeights[2]) : 1.65
+        let turbulenceWeight = fieldLayerWeights.count > 3 ? max(0.0, fieldLayerWeights[3]) : 2.25
+
+        // Large open domain. These values intentionally match the v1.11A config scale.
+        let softRadius: Float = 4200.0
+        let absoluteFailsafeRadius: Float = 15000.0
+
+        // Motion tuning.
+        let baseTurbulence: Float = 0.0125
+        let baseVertical: Float = 0.0040
+        let baseCohesion: Float = 0.000006
+        let baseSwirl: Float = 0.000035
+        let farReturn: Float = 0.00011
+        let damping: Float = 0.99865
+        let speedLimit: Float = 9.5
+
+        // Non-vertical rotation axis so "orbit" is a 3D tendency, not an X/Z disk.
+        let swirlAxisRaw = SIMD3<Float>(0.43, 0.71, 0.56)
+        let swirlAxisLen = max(0.0001, simd_length(swirlAxisRaw))
+        let swirlAxis = swirlAxisRaw / swirlAxisLen
+
+        for i in 0..<count {
+            var p = live[i].position
+            var v = velocity[i].position
+
+            if !p.x.isFinite || !p.y.isFinite || !p.z.isFinite {
+                p = SIMD3<Float>(0, 0, 0)
+                v = SIMD3<Float>(0, 0, 0)
+            }
+
+            if !v.x.isFinite || !v.y.isFinite || !v.z.isFinite {
+                v = SIMD3<Float>(0, 0, 0)
+            }
+
+            let seed = Float((i % 9973) + 1)
+
+            // Deterministic pseudo-noise. This avoids random CPU allocations and keeps behavior repeatable.
+            let n = SIMD3<Float>(
+                sin(seed * 12.9898 + t * 0.37),
+                sin(seed * 78.2330 + t * 0.41),
+                sin(seed * 37.7190 + t * 0.53)
+            )
+
+            let n2 = SIMD3<Float>(
+                cos(seed * 4.123 + t * 0.17),
+                sin(seed * 9.871 + t * 0.23),
+                cos(seed * 2.337 + t * 0.31)
+            )
+
+            // True 3D turbulence. This is the primary visible motion.
+            v += n * (baseTurbulence * turbulenceWeight)
+
+            // Extra vertical diffusion so the cloud does not flatten.
+            v.y += sin(seed * 0.013 + t * 0.71) * baseVertical * verticalWeight
+            v += n2 * (0.0020 * verticalWeight)
+
+            // Weak 3D swirl. This is deliberately not a disk orbit.
+            let radius = simd_length(p)
+            if radius > 0.001 {
+                let dir = p / radius
+                let swirl = simd_cross(swirlAxis, dir)
+                v += swirl * (baseSwirl * orbitalWeight * min(radius / softRadius, 2.0))
+
+                // Very weak cohesion only as a field tendency.
+                // This is not a shell and not a boundary.
+                v -= dir * (baseCohesion * radialWeight)
+            }
+
+            // Soft far-field return only when particles drift far beyond the large cube.
+            // This prevents numerical loss without making a visible wall.
+            if radius > softRadius {
+                let dir = p / max(radius, 0.001)
+                let excess = min((radius - softRadius) / softRadius, 3.0)
+                v -= dir * (farReturn * excess)
+            }
+
+            // Absolute failsafe only. This is not a visual boundary.
+            if radius > absoluteFailsafeRadius {
+                p *= 0.92
+                v *= 0.25
+            }
+
+            // Velocity memory.
+            v *= damping
+
+            // Speed clamp to prevent a few particles from numerically exploding.
+            let speed = simd_length(v)
+            if speed > speedLimit {
+                v = (v / max(speed, 0.0001)) * speedLimit
+            }
+
+            p += v
+
+            live[i] = Particle(position: p)
+            velocity[i] = Particle(position: v)
+        }
+    }
+    // RMU_V1_11B_TRUE_VOLUMETRIC_KERNEL_METHOD_END
+
     func encodeGeospatialParticleUpdate(commandBuffer: MTLCommandBuffer) {
-        // RMU_V1_11A_PHASE3E_MINIMAL_BYPASS_OLD_DISK_COMPUTE
-        // Proof mode: bypass the legacy compact-disk compute kernel.
-        // Set RMU_ENABLE_LEGACY_DISK_COMPUTE=1 only when comparing against the old snap-back behavior.
+        // RMU_V1_11B_TRUE_VOLUMETRIC_KERNEL
+        // Default v1.11B path: use open-world volumetric update.
+        // Set RMU_ENABLE_LEGACY_DISK_COMPUTE=1 only for comparison with the old snap-back kernel.
         if ProcessInfo.processInfo.environment["RMU_ENABLE_LEGACY_DISK_COMPUTE"] != "1" {
+            rmuV111BUpdateVolumetricParticlesCPU()
             return
         }
 
@@ -2540,10 +2669,10 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
         print("Metal renderer | fps=\(String(format: "%.1f", currentFPS)) | points=\(frameLoader.latestPointCount) | simFrame=\(frameLoader.latestFrameIndex) | runtime=\(geospatialSimulationPaused == 0 ? "geospatial_live_running" : "geospatial_static_paused") | behaviorCode=\(behaviorEffectCode) | color=\(colorModeName) | trails=\(trailsEnabled) len=\(trailLength) | presentation=\(presentationModeEnabled) | FIELD_SYSTEM=\(fieldLayersEnabled ? "ON" : "OFF") | SELECTED=\(selectedFieldLayerName) | WEIGHT=\(String(format: "%.2f", selectedFieldLayerWeight)) | ENABLED=\(fieldLayerEnabled[selectedFieldLayerIndex]) | VCV=\(vcvDisplayStatus()) | SPEED=\(String(format: "%.2f", geospatialParticleSpeed)) | MASS=\(String(format: "%.2f", geospatialParticleMass)) | TURB=\(String(format: "%.2f", geospatialParticleTurbulence)) | COH=\(String(format: "%.2f", geospatialParticleCohesion)) | WELL=\(String(format: "%.2f", geospatialGravityWellPosition))/\(String(format: "%.2f", geospatialGravityWellStrength)) | CAP=\(geospatialDisplayParticleLimit) | SAFE=\(vcvSafeModeEnabled) | SPECIES_COLOR=VERTEX | BEH18/19=VCV_GATE_DIRECT | VCV_APPLY=v1.6F_PRE_ENCODE HUD=v1.6G | \(vcvChannelCompactSummary())")
     }
 
-    func increasePointSize() { pointSize = min(pointSize + 0.5, 12.0); hud?.updateText() }
-    func decreasePointSize() { pointSize = max(pointSize - 0.5, 0.5); hud?.updateText() }
-    func zoomOut() { let current = manualWorldRadius ?? frameLoader.worldRadius; manualWorldRadius = min(current * 1.15, 100.0); hud?.updateText() }
-    func zoomIn() { let current = manualWorldRadius ?? frameLoader.worldRadius; manualWorldRadius = max(current / 1.15, 0.25); hud?.updateText() }
+    func increasePointSize() { pointSize = min(pointSize + 4.0, 96.0); hud?.updateText() } // RMU_V1_11C_EXACT_BIG_ZOOM_BIG_PARTICLES
+    func decreasePointSize() { pointSize = max(pointSize - 4.0, 2.0); hud?.updateText() } // RMU_V1_11C_EXACT_BIG_ZOOM_BIG_PARTICLES
+    func zoomOut() { let current = manualWorldRadius ?? frameLoader.worldRadius; manualWorldRadius = min(current * 1.75, 100000.0); hud?.updateText() } // RMU_V1_11C_EXACT_BIG_ZOOM_BIG_PARTICLES: huge zoom-out range
+    func zoomIn() { let current = manualWorldRadius ?? frameLoader.worldRadius; manualWorldRadius = max(current / 1.75, 0.25); hud?.updateText() } // RMU_V1_11C_EXACT_BIG_ZOOM_BIG_PARTICLES: matched large-world zoom step
     func pan(dx: Float, dy: Float) { panX += dx; panY += dy; hud?.updateText() }
     func rotate(delta: Float) { rotationRadians += delta; hud?.updateText() }
     func resetCamera() {
@@ -3549,7 +3678,7 @@ if let probabilityNumber = (json["probability_value"] as? NSNumber) ?? (json["pr
         }
 
         if let render = state["render"] as? [String: Any] {
-            pointSize = Float((render["point_size"] as? NSNumber)?.doubleValue ?? Double(pointSize))
+            pointSize = max(Float((render["point_size"] as? NSNumber)?.doubleValue ?? Double(pointSize)), 32.0) // RMU_V1_11C_EXACT_BIG_ZOOM_BIG_PARTICLES: saved states cannot shrink v1.11C particles
             colorMode = Int32((render["color_mode"] as? NSNumber)?.intValue ?? Int(colorMode))
             trailsEnabled = (render["trails_enabled"] as? Bool) ?? trailsEnabled
             trailLength = (render["trail_length"] as? NSNumber)?.intValue ?? trailLength
@@ -4959,7 +5088,7 @@ extension AppDelegate {
         if chars == "r" { renderer?.resetGeospatialParticleState(); if shift { writeRuntimeState(source: "v1_8A_shift_r_reset") }; return true }
         if chars == "c" { if shift { rmuV18AWriteOperatorState(["auto_camera_enabled": !(rmuV18AReadOperatorState()["auto_camera_enabled"] as? Bool ?? false)], reason: "toggle_auto_camera") } else { renderer?.resetCamera() }; return true }
         if chars == "w" { renderer?.zoomIn(); return true }
-        if chars == "s" { renderer?.zoomOut(); return true }
+        // RMU_V1_11D_REMOVE_LATE_S_ZOOMOUT: S no longer zooms out in late v1.8A handler. Use Z/Q/[ for zoom out.
         if chars == "a" { renderer?.rotate(delta: -rotStep); return true }
         if chars == "d" { renderer?.rotate(delta: rotStep); return true }
         if chars == "q" { NSApplication.shared.terminate(nil); return true }
