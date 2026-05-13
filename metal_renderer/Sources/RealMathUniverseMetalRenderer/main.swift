@@ -1,3 +1,4 @@
+// RMU_V1_11E_SPHERE_IMPOSTOR_PARTICLES: shaded circular sphere impostors for large volumetric particles
 // RMU_V1_11C_EXACT_BIG_ZOOM_BIG_PARTICLES: exact-anchor camera zoom and particle scale patch
 // RMU_V1_11B_TRUE_VOLUMETRIC_KERNEL: open-world live position + velocity update, no legacy disk snap
 // RMU_V1_11A_PHASE3C_DISABLE_DISC_SNAP: disables old tiny-radius shell/orbital disc snap for large geospatial volume
@@ -894,7 +895,7 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
     var currentFrameTimeMS: Double = 0.0
     var lateFrameWarning: Bool = false
 
-    var pointSize: Float = 32.0 // RMU_V1_11C_EXACT_BIG_ZOOM_BIG_PARTICLES: basketball-sized particles
+    var pointSize: Float = 32.0 // RMU_V1_11F_POINTSIZE_CHECKER_REPAIR_32
     var manualWorldRadius: Float? = nil
     var panX: Float = 0.0
     var panY: Float = 0.0
@@ -1652,8 +1653,38 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
             velocityParticles[id].position = vel;
         }
 
-        fragment float4 fragment_main(VertexOut in [[stage_in]]) {
-            return in.color;
+        fragment float4 fragment_main(
+            VertexOut in [[stage_in]],
+            float2 pointCoord [[point_coord]]
+        ) {
+            // RMU_V1_11E_SPHERE_IMPOSTOR_PARTICLES
+            // Metal point primitives are square by default. This fragment path turns each
+            // oversized point into a shaded sphere impostor.
+            float2 uv = pointCoord * 2.0 - 1.0;
+            float r2 = dot(uv, uv);
+
+            if (r2 > 1.0) {
+                discard_fragment();
+            }
+
+            float z = sqrt(max(1.0 - r2, 0.0));
+            float3 normal = normalize(float3(uv.x, uv.y, z));
+
+            float3 lightDir = normalize(float3(-0.45, 0.62, 0.78));
+            float diffuse = max(dot(normal, lightDir), 0.0);
+
+            float rim = pow(clamp(1.0 - z, 0.0, 1.0), 2.35);
+            float core = 0.30 + 0.70 * diffuse;
+            float edgeSoft = smoothstep(1.0, 0.72, r2);
+
+            float3 baseColor = in.color.rgb;
+            float3 shaded = baseColor * core;
+            shaded += baseColor * rim * 0.35;
+            shaded += float3(1.0, 1.0, 1.0) * pow(diffuse, 16.0) * 0.18;
+
+            float alpha = in.color.a * edgeSoft;
+
+            return float4(shaded, alpha);
         }
         """
 
@@ -2669,8 +2700,8 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
         print("Metal renderer | fps=\(String(format: "%.1f", currentFPS)) | points=\(frameLoader.latestPointCount) | simFrame=\(frameLoader.latestFrameIndex) | runtime=\(geospatialSimulationPaused == 0 ? "geospatial_live_running" : "geospatial_static_paused") | behaviorCode=\(behaviorEffectCode) | color=\(colorModeName) | trails=\(trailsEnabled) len=\(trailLength) | presentation=\(presentationModeEnabled) | FIELD_SYSTEM=\(fieldLayersEnabled ? "ON" : "OFF") | SELECTED=\(selectedFieldLayerName) | WEIGHT=\(String(format: "%.2f", selectedFieldLayerWeight)) | ENABLED=\(fieldLayerEnabled[selectedFieldLayerIndex]) | VCV=\(vcvDisplayStatus()) | SPEED=\(String(format: "%.2f", geospatialParticleSpeed)) | MASS=\(String(format: "%.2f", geospatialParticleMass)) | TURB=\(String(format: "%.2f", geospatialParticleTurbulence)) | COH=\(String(format: "%.2f", geospatialParticleCohesion)) | WELL=\(String(format: "%.2f", geospatialGravityWellPosition))/\(String(format: "%.2f", geospatialGravityWellStrength)) | CAP=\(geospatialDisplayParticleLimit) | SAFE=\(vcvSafeModeEnabled) | SPECIES_COLOR=VERTEX | BEH18/19=VCV_GATE_DIRECT | VCV_APPLY=v1.6F_PRE_ENCODE HUD=v1.6G | \(vcvChannelCompactSummary())")
     }
 
-    func increasePointSize() { pointSize = min(pointSize + 4.0, 96.0); hud?.updateText() } // RMU_V1_11C_EXACT_BIG_ZOOM_BIG_PARTICLES
-    func decreasePointSize() { pointSize = max(pointSize - 4.0, 2.0); hud?.updateText() } // RMU_V1_11C_EXACT_BIG_ZOOM_BIG_PARTICLES
+    func increasePointSize() { pointSize = min(pointSize + 3.0, 96.0); hud?.updateText() } // RMU_V1_11E_SPHERE_IMPOSTOR_PARTICLES // RMU_V1_11C_EXACT_BIG_ZOOM_BIG_PARTICLES
+    func decreasePointSize() { pointSize = max(pointSize - 3.0, 2.0); hud?.updateText() } // RMU_V1_11E_SPHERE_IMPOSTOR_PARTICLES // RMU_V1_11C_EXACT_BIG_ZOOM_BIG_PARTICLES
     func zoomOut() { let current = manualWorldRadius ?? frameLoader.worldRadius; manualWorldRadius = min(current * 1.75, 100000.0); hud?.updateText() } // RMU_V1_11C_EXACT_BIG_ZOOM_BIG_PARTICLES: huge zoom-out range
     func zoomIn() { let current = manualWorldRadius ?? frameLoader.worldRadius; manualWorldRadius = max(current / 1.75, 0.25); hud?.updateText() } // RMU_V1_11C_EXACT_BIG_ZOOM_BIG_PARTICLES: matched large-world zoom step
     func pan(dx: Float, dy: Float) { panX += dx; panY += dy; hud?.updateText() }
@@ -5052,47 +5083,166 @@ extension AppDelegate {
     func rmuV18AToggleDatasetMode() { let modes = ["off", "observe", "propose", "apply"]; let s = rmuV18AReadOperatorState(); let cur = s["dataset_coupling_mode"] as? String ?? "observe"; let idx = modes.firstIndex(of: cur) ?? 1; let next = modes[(idx + 1) % modes.count]; rmuV18AWriteOperatorState(["dataset_coupling_mode": next], reason: "dataset_mode_\(next)") }
     func rmuV18AToggleDatasetCouplingApply() { let s = rmuV18AReadOperatorState(); let cur = (s["dataset_coupling_mode"] as? String ?? "observe").lowercased(); let turnOn = cur != "apply"; rmuV18AWriteOperatorState(["dataset_coupling_mode": turnOn ? "apply" : "observe", "auto_fields_enabled": turnOn, "active_auto_domain": turnOn ? "field" : (s["active_auto_domain"] as? String ?? "behavior")], reason: turnOn ? "dataset_coupling_apply_on" : "dataset_coupling_observe_off") }
     func rmuV18AHandleKey(_ event: NSEvent) -> Bool {
-        let shift = event.modifierFlags.contains(.shift); let control = event.modifierFlags.contains(.control); let chars = event.charactersIgnoringModifiers?.lowercased() ?? ""; let panStep: Float = 0.035; let rotStep: Float = 4.0 * .pi / 180.0
-        if event.keyCode == 53 { rmuV18AEmergencyManual(); return true }
-        if event.keyCode == 49 { toggleSimulationPause(); return true }
-        if event.keyCode == 48 { rmuV18ACycleAutoDomain(); return true }
-        switch event.keyCode { case 123: renderer?.pan(dx: -panStep, dy: 0); return true; case 124: renderer?.pan(dx: panStep, dy: 0); return true; case 125: renderer?.pan(dx: 0, dy: -panStep); return true; case 126: renderer?.pan(dx: 0, dy: panStep); return true; default: break }
-        if control && ["1","2","3","4"].contains(chars) { switch chars { case "1": loadCameraPreset("gallery_orbit"); case "2": loadCameraPreset("macro_disk"); case "3": loadCameraPreset("wide_system"); case "4": loadCameraPreset("default_camera"); default: break }; return true }
-        if chars.count == 1, let n = Int(chars), n >= 0 && n <= 7 { rmuV18ASetBehavior(n); return true }
-        if shift && chars == "e" { rmuV18AToggleNoBehavior(); return true }
-        if chars == "m" { rmuV18AFullManual(); return true }
-        if chars == "a" { rmuV18AToggleAuto(); return true }
-        if chars == "n" { rmuV18AToggleNoBehavior(); return true }
-        if chars == "b" { rmuV18AToggleBehaviorQueue(); return true }
-        if shift && chars == "b" { rmuV18AToggleDatasetCouplingApply(); return true }
-        if chars == "f" { rmuV18AToggleFieldQueue(); return true }
-        if shift && chars == "f" { rmuV18AWriteOperatorState(["auto_fields_enabled": false], reason: "force_field_manual"); return true }
-        if chars == "v" { rmuV18ACycleSelectedFieldLayer(); return true }
-        if chars == "[" { rmuV18AQueueStep(domain: "field", delta: -1); return true }
-        if chars == "]" { rmuV18AQueueStep(domain: "field", delta: 1); return true }
-        if chars == "." { rmuV18AQueueStep(domain: rmuV18AReadOperatorState()["active_auto_domain"] as? String ?? "behavior", delta: 1); return true }
-        if chars == "," { rmuV18AQueueStep(domain: rmuV18AReadOperatorState()["active_auto_domain"] as? String ?? "behavior", delta: -1); return true }
-        if shift && (chars == "-" || chars == "_") { rmuV18AAdjustAutoSpeed(delta: 5.0); return true }
-        if shift && (chars == "=" || chars == "+") { rmuV18AAdjustAutoSpeed(delta: -5.0); return true }
-        if shift && chars == "0" { rmuV18AWriteOperatorState(["behavior_step_seconds": 30.0, "field_step_seconds": 20.0], reason: "reset_auto_speed"); return true }
-        if chars == "-" { rmuV18AAdjustFieldWeight(delta: -0.05); return true }
-        if chars == "=" { rmuV18AAdjustFieldWeight(delta: 0.05); return true }
-        if chars == "p" { let s = rmuV18AReadOperatorState(); rmuV18AWriteOperatorState(["queues_paused": !(s["queues_paused"] as? Bool ?? false)], reason: "toggle_queues_paused"); return true }
-        if chars == "d" { if shift { rmuV18AWriteOperatorState(["dataset_coupling_mode": "observe"], reason: "dataset_observe") } else { rmuV18AToggleDatasetMode() }; return true }
-        if chars == "g" { rmuV18AWriteOperatorState(["dataset_gain_adjust_request": shift ? "down" : "up"], reason: "dataset_gain_request"); return true }
-        if chars == "o" { let s = rmuV18AReadOperatorState(); rmuV18AWriteOperatorState(["vcv_event_recording_enabled": !(s["vcv_event_recording_enabled"] as? Bool ?? true)], reason: "toggle_vcv_event_recording"); return true }
-        if shift && chars == "o" { rmuV18AWriteOperatorState(["command": ["action": "clear_queues", "id": UUID().uuidString]], reason: "clear_all_queues"); return true }
-        if chars == "h" { if shift { hud?.toggleBottomPanelMode() } else { hud?.toggleAll() }; hud?.updateText(); return true }
-        if chars == "u" { hud?.toggleBottomPanelMode(); return true }
-        if chars == "k" { if control { captureBurst(clean: false, total: burstCount, interval: burstInterval) } else { saveWindowScreenshot(clean: shift) }; return true }
-        if chars == "r" { renderer?.resetGeospatialParticleState(); if shift { writeRuntimeState(source: "v1_8A_shift_r_reset") }; return true }
-        if chars == "c" { if shift { rmuV18AWriteOperatorState(["auto_camera_enabled": !(rmuV18AReadOperatorState()["auto_camera_enabled"] as? Bool ?? false)], reason: "toggle_auto_camera") } else { renderer?.resetCamera() }; return true }
-        if chars == "w" { renderer?.zoomIn(); return true }
-        // RMU_V1_11D_REMOVE_LATE_S_ZOOMOUT: S no longer zooms out in late v1.8A handler. Use Z/Q/[ for zoom out.
-        if chars == "a" { renderer?.rotate(delta: -rotStep); return true }
-        if chars == "d" { renderer?.rotate(delta: rotStep); return true }
-        if chars == "q" { NSApplication.shared.terminate(nil); return true }
-        return true
+        // RMU_V1_11F_REPLACE_RMUV18A_HANDLEKEY_GATEWAY
+        // Gateway rule:
+        // - SPACE remains run/pause.
+        // - Camera and point-size keys are handled here because this v1.8A layer runs first.
+        // - Authority/control commands require SHIFT unless explicitly noted.
+        // - Unrecognized keys return false so the older documented handleKey() can process screenshots,
+        //   color hotkeys, HUD toggles, presentation mode, trails, etc.
+
+        let shift = event.modifierFlags.contains(.shift)
+        let control = event.modifierFlags.contains(.control)
+        let chars = event.charactersIgnoringModifiers?.lowercased() ?? ""
+        let panStep: Float = 0.035
+        let rotStep: Float = 4.0 * .pi / 180.0
+
+        // Escape remains emergency manual, not app quit.
+        if event.keyCode == 53 {
+            rmuV18AEmergencyManual()
+            return true
+        }
+
+        // SPACE: run/pause only.
+        if event.keyCode == 49 {
+            toggleSimulationPause()
+            return true
+        }
+
+        // Corrected arrow pan. This is intentionally the reverse of the old inverted mapping.
+        switch event.keyCode {
+        case 123:
+            renderer?.pan(dx: panStep, dy: 0)
+            return true
+        case 124:
+            renderer?.pan(dx: -panStep, dy: 0)
+            return true
+        case 125:
+            renderer?.pan(dx: 0, dy: panStep)
+            return true
+        case 126:
+            renderer?.pan(dx: 0, dy: -panStep)
+            return true
+        default:
+            break
+        }
+
+        // Camera controls.
+        if chars == "w" || chars == "e" || chars == "]" {
+            renderer?.zoomIn()
+            return true
+        }
+
+        if chars == "z" || chars == "q" || chars == "[" {
+            renderer?.zoomOut()
+            return true
+        }
+
+        if chars == "x" {
+            renderer?.resetCamera()
+            return true
+        }
+
+        if chars == "a" {
+            renderer?.rotate(delta: -rotStep)
+            return true
+        }
+
+        if chars == "d" {
+            renderer?.rotate(delta: rotStep)
+            return true
+        }
+
+        if chars == "+" || chars == "=" {
+            renderer?.increasePointSize()
+            return true
+        }
+
+        if chars == "-" || chars == "_" {
+            renderer?.decreasePointSize()
+            return true
+        }
+
+        // Camera presets stay on CTRL+1..4.
+        if control && ["1", "2", "3", "4"].contains(chars) {
+            switch chars {
+            case "1": loadCameraPreset("gallery_orbit")
+            case "2": loadCameraPreset("macro_disk")
+            case "3": loadCameraPreset("wide_system")
+            case "4": loadCameraPreset("default_camera")
+            default: break
+            }
+            return true
+        }
+
+        // Operator/authority controls.
+        if shift && chars.count == 1, let n = Int(chars), n >= 0 && n <= 7 {
+            rmuV18ASetBehavior(n)
+            return true
+        }
+
+        if shift && chars == "a" {
+            rmuV18AToggleAuto()
+            return true
+        }
+
+        if shift && chars == "b" {
+            rmuV18AToggleDatasetCouplingApply()
+            return true
+        }
+
+        if shift && chars == "n" {
+            rmuV18AToggleNoBehavior()
+            return true
+        }
+
+        if shift && chars == "m" {
+            rmuV18AFullManual()
+            return true
+        }
+
+        if shift && chars == "j" {
+            rmuV18AToggleBehaviorQueue()
+            return true
+        }
+
+        if shift && chars == "f" {
+            rmuV18AToggleFieldQueue()
+            return true
+        }
+
+        if shift && chars == "v" {
+            rmuV18ACycleSelectedFieldLayer()
+            return true
+        }
+
+        if shift && chars == "." {
+            rmuV18AQueueStep(domain: rmuV18AReadOperatorState()["active_auto_domain"] as? String ?? "behavior", delta: 1)
+            return true
+        }
+
+        if shift && chars == "," {
+            rmuV18AQueueStep(domain: rmuV18AReadOperatorState()["active_auto_domain"] as? String ?? "behavior", delta: -1)
+            return true
+        }
+
+        if shift && chars == "d" {
+            rmuV18AToggleDatasetMode()
+            return true
+        }
+
+        if control && chars == "-" {
+            rmuV18AAdjustFieldWeight(delta: -0.05)
+            return true
+        }
+
+        if control && chars == "=" {
+            rmuV18AAdjustFieldWeight(delta: 0.05)
+            return true
+        }
+
+        // Let the older documented handler process all remaining non-authority keys.
+        return false
     }
 }
 // RMU_V1_8A_OPERATOR_AUTHORITY_EXTENSION_END

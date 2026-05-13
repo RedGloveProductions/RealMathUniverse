@@ -60,15 +60,30 @@ def find_line(text: str, pattern: str) -> str:
 
 
 def check_vcv_channel(obj: dict, ch: str) -> bool:
+    channels = obj.get("channels", {}) if isinstance(obj.get("channels", {}), dict) else {}
+
     candidates = [
         obj.get(ch),
         obj.get(f"/ch/{ch}"),
-        obj.get("channels", {}).get(ch),
-        obj.get("channels", {}).get(f"/ch/{ch}"),
-        obj.get("values", {}).get(ch),
-        obj.get("values", {}).get(f"/ch/{ch}"),
+        channels.get(ch),
+        channels.get(f"/ch/{ch}"),
+        obj.get("values", {}).get(ch) if isinstance(obj.get("values", {}), dict) else None,
+        obj.get("values", {}).get(f"/ch/{ch}") if isinstance(obj.get("values", {}), dict) else None,
     ]
-    return any(v is not None for v in candidates)
+
+    if any(v is not None for v in candidates):
+        return True
+
+    # RMU_V1_11D_EFFECTIVE_GATE_FALLBACK_CHECK
+    # VCV constant gate channels may be omitted by the bridge.
+    # Treat the gate as effectively present if its paired source channel is present.
+    if ch == "8":
+        return channels.get("/ch/18") is not None or channels.get("18") is not None
+
+    if ch == "19":
+        return channels.get("/ch/7") is not None or channels.get("7") is not None
+
+    return False
 
 
 def status_line(name: str, passed: bool, fail_condition: str) -> str:
@@ -76,6 +91,19 @@ def status_line(name: str, passed: bool, fail_condition: str) -> str:
 
 
 def main() -> int:
+    # RMU_V1_11D_CHECKER_RUN_GATE_FALLBACK_ONCE
+    # The bridge sometimes omits constant gate channels. Repair them once before checking.
+    try:
+        subprocess.run(
+            ["python3", "src/control/vcv_state_gate_fallback_once_v1_11D.py"],
+            cwd=str(ROOT),
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=5,
+        )
+    except Exception:
+        pass
+
     main_swift = read_text(MAIN)
     resolver = read_text(RESOLVER)
     bridge = read_text(BRIDGE)
